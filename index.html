@@ -227,6 +227,13 @@ label.mini input,label.mini select{padding:8px 6px}
 .wmore select{flex:1.4}.wmore input{flex:1}
 .wlist{margin-top:8px}.wrow{display:flex;align-items:center;gap:8px;padding:5px 0;border-top:1px solid var(--line);font-size:14px}.wrow span:first-child{flex:1}
 .nudge{border-color:#f5b942;background:color-mix(in srgb,#f5b942 14%,var(--card))}.nl{font-size:14px;padding:2px 0}
+.mq4{grid-template-columns:repeat(4,1fr)}.again{display:flex;flex-wrap:wrap;gap:6px;margin-top:4px}
+.cxt,.cxp{border:0;background:none;color:var(--mute);font:inherit;cursor:pointer;padding:2px 6px;border-radius:8px;line-height:1;vertical-align:middle}
+.cxt{font-size:15px;margin-right:2px;transition:transform .15s}.cx-c .cxt{transform:rotate(-90deg)}
+.cxp{font-size:13px;opacity:.3;filter:grayscale(1)}.cxp.on{opacity:1;filter:none}.cx-p .cxt{display:none}
+.cx-c>:not(:first-child){display:none!important}
+.syswin .cxt,.syswin .cxp{color:var(--swm)}
+.cxbar{display:flex;justify-content:flex-end;gap:8px;margin:0 0 8px}.cxbar button{border:0;background:var(--acc2);color:var(--acc);font:inherit;font-size:12px;font-weight:600;padding:5px 10px;border-radius:99px;cursor:pointer}
 .exbtns{display:flex;gap:4px;flex:0 0 auto;margin-left:auto}.exbtns .ib{min-width:34px;height:36px}
 .restbar{position:fixed;left:12px;right:12px;bottom:calc(68px + env(safe-area-inset-bottom));z-index:40;max-width:616px;margin:0 auto;background:var(--ink);color:var(--bg);border-radius:16px;padding:10px 14px;display:flex;align-items:center;gap:8px;box-shadow:0 8px 24px #0004}
 .restbar span{flex:1}.restbar b{font-size:20px;margin-left:6px;font-variant-numeric:tabular-nums}

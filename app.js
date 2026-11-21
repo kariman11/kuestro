@@ -205,6 +205,8 @@ function renderToday(){
   const rItem=r=>{const s=streak(r),lt=LOGFOR[r.cat];
     const meta=[fmtTime(r.time),r.note?esc(r.note):'',s>1?`🔥 ${s}`:''].filter(Boolean).join(' · ');
     return itemHTML(r.id,r.name,r.link==='train'&&nextW()?[meta,'Next: '+esc(nextW().name)].filter(Boolean).join(' · '):meta,isDone(r.id,d),r.link==='water'?`<span class="meta">${wL(wTotal(k))} / ${wL(wData().goal)}</span>`:r.link==='train'?`<button class="pill" data-act="goTrain">▶ Train</button>`:lt?`<button class="pill" data-log="${lt}">+ log</button>`:'')};
+  const catCard=c=>{const extra=c==='language'?`<span style="display:flex;gap:6px"><a class="pill" ${linkAttrs(S.lang.duoUrl)}>🦉 Duolingo</a><button class="pill" data-act="goLearn">🧠 ${dueCards().length}</button></span>`:'';
+    return `<div class="card"><div class="sec-h"><span>${CATS[c][0]} ${c==='language'?esc(S.lang.name):CATS[c][1]}</span>${extra}</div>${groups[c].map(rItem).join('')}</div>`};
   let h='';
   if(isToday)h+=nudgeBannerHTML()+cardOfDayHTML();
   const doses=dosesOn(d);
@@ -212,7 +214,7 @@ function renderToday(){
     h+=`<div class="card"><div class="sec-h"><span>💊 Medications</span><button class="pill" data-act="goMeds">Manage</button></div>${doses.map(x=>{const m=x.m,dn=isDone(x.id,d),late=isToday&&!dn&&x.t&&x.t<nh,food=MED_FOOD.find(f=>f[0]===m.food);
       const meta=[x.t?fmtTime(x.t):'',m.dose?esc(m.dose):'',food&&m.food!=='any'?food[1].toLowerCase():'',late?'<b class="late">late</b>':'',medTracked(m)&&+m.stock<=(+m.refillAt||0)?`⚠️ ${+m.stock} left`:''].filter(Boolean).join(' · ');
       return itemHTML(x.id,`${medIcon(m.form)} ${m.name}`,meta,dn)}).join('')}</div>`}
-  h+=waterCardHTML(d);
+  h+=waterCardHTML(d)+mealsCardHTML(d)+(groups.meals?catCard('meals'):'');
   if(isToday)h+=todoTodayCard()+moneyTodayCard();
   if(isToday){
     const dq=activeQuests().filter(q=>q.scope==='d'&&!q.bonus);
@@ -226,10 +228,7 @@ function renderToday(){
     if(S.settings.prayers)h+=PRAYERS.map(p=>itemHTML('prayer:'+p,p,`<span data-pt="${p}">…</span>`,isDone('prayer:'+p,d))).join('');
     h+=(groups.prayer||[]).map(rItem).join('')+`</div>`;
   }
-  Object.keys(CATS).filter(c=>c!=='prayer'&&groups[c]).forEach(c=>{
-    const extra=c==='language'?`<span style="display:flex;gap:6px"><a class="pill" ${linkAttrs(S.lang.duoUrl)}>🦉 Duolingo</a><button class="pill" data-act="goLearn">🧠 ${dueCards().length}</button></span>`:'';
-    h+=`<div class="card"><div class="sec-h"><span>${CATS[c][0]} ${c==='language'?esc(S.lang.name):CATS[c][1]}</span>${extra}</div>${groups[c].map(rItem).join('')}</div>`;
-  });
+  Object.keys(CATS).filter(c=>c!=='prayer'&&c!=='meals'&&groups[c]).forEach(c=>{h+=catCard(c)});
   const dl=S.logs.filter(l=>l.date===k);
   if(dl.length)h+=`<div class="card"><div class="sec-h"><span>📝 Logged</span></div>${dl.map(l=>`<div class="li"><span>${LOG[l.type].icon}</span><div class="grow">${esc(LOG[l.type].sum(l))}${l.src?` <span class="meta">· ${esc(l.src)}</span>`:''}</div></div>`).join('')}</div>`;
   if(!due.length&&!S.settings.prayers&&!dl.length)h+=`<div class="empty">Nothing scheduled for this day.<br><br><button class="btn" data-act="newRoutine">+ Add a routine</button></div>`;
@@ -377,7 +376,7 @@ function waterCardHTML(d){
   const k=key(d),W=wData(),tot=wTotal(k),pct=Math.min(100,Math.round(tot/W.goal*100)),list=[...wList(k)].reverse(),by={};
   wList(k).forEach(x=>by[x.t]=(by[x.t]||0)+x.ml);
   const q=(t,ml,l)=>`<button class="wbtn" data-wadd="${t}:${ml}"><span>${DRINKS[t][0]}</span><b>${l}</b><small>${ml} ml</small></button>`;
-  return `<div class="card water"><div class="sec-h"><span>💧 Water & drinks</span><select class="wgoal" data-wgoal aria-label="Daily goal">${[1500,2000,2500,3000,3500,4000].map(v=>`<option value="${v}" ${W.goal===v?'selected':''}>🎯 ${wL(v)}</option>`).join('')}</select></div>
+  return `<div class="card water" data-cid="water"><div class="sec-h"><span>💧 Water & drinks</span><select class="wgoal" data-wgoal aria-label="Daily goal">${[1500,2000,2500,3000,3500,4000].map(v=>`<option value="${v}" ${W.goal===v?'selected':''}>🎯 ${wL(v)}</option>`).join('')}</select></div>
     <div class="wtot"><b>${wL(tot)}</b><span class="meta">of ${wL(W.goal)}</span><span class="meta wleft">${tot>=W.goal?'🎉 Goal reached!':wL(W.goal-tot)+' to go'}</span></div>
     <div class="bar"><i style="width:${pct}%"></i></div>
     <div class="wq">${q('water',250,'Cup')}${q('water',500,'Bottle')}${q('coffee',200,'Coffee')}${q('tea',200,'Tea')}<button class="wbtn" data-wmore><span>＋</span><b>More</b><small>other</small></button></div>
@@ -397,8 +396,27 @@ document.addEventListener('change',e=>{const t=e.target;if(!S||!t||!t.dataset)re
     waterSync(key(viewDate));save();render()}
 });
 
+/* ---------- Meals card on Today (quick add, today's meals, log again) ---------- */
+const MEAL_ICON={Breakfast:'🌅',Lunch:'🍽️',Dinner:'🌙',Snack:'🍎'};
+function mealsCardHTML(d){
+  const k=key(d),t=dayTotals(k),n=S.nut=S.nut||{kcal:0,p:0},meals=S.logs.filter(l=>l.type==='meal'&&l.date===k).sort((a,b)=>a.ts-b.ts);
+  const bar=(v,g,l)=>g>0?`<div class="meta" style="margin-top:6px">${l}: ${r0(v)} / ${g}</div><div class="bar sm"><i style="width:${Math.min(100,Math.round(v/g*100))}%;${v>g?'background:var(--warn)':''}"></i></div>`:'';
+  const seen=new Set(),again=[...S.logs].reverse().filter(l=>l.type==='meal'&&l.items&&l.items.length&&l.food).filter(l=>{if(seen.has(l.food))return false;seen.add(l.food);return true}).slice(0,3);
+  return `<div class="card meals" data-cid="meals"><div class="sec-h"><span>🥗 Meals</span><span class="meta"><b>${r0(t.k)}</b> kcal</span></div>
+    <div class="meta">Protein ${r0(t.p)} g · Carbs ${r0(t.c)} g · Fat ${r0(t.f)} g</div>${bar(t.k,n.kcal,'Calories')}${bar(t.p,n.p,'Protein g')}
+    <div class="wq mq4">${Object.entries(MEAL_ICON).map(([sl,e])=>`<button class="wbtn" data-mealadd="${sl}"><span>${e}</span><b>${sl}</b><small>+ add</small></button>`).join('')}</div>
+    ${meals.length?`<div class="wlist">${meals.map(l=>`<div class="wrow"><span>${MEAL_ICON[l.slot]||'🥗'} ${esc(l.slot||'Meal')} · ${esc((l.food||'').slice(0,56))}${(l.food||'').length>56?'…':''}</span><span class="meta">${l.kcal?l.kcal+' kcal':''}</span><button class="ib" data-delmeal="${l.id}" aria-label="Remove">×</button></div>`).join('')}</div>`:'<div class="meta" style="margin-top:8px">No meals logged yet. Tap a meal above to add what you ate.</div>'}
+    ${again.length?`<div class="meta mt">Log again with one tap:</div><div class="again">${again.map(l=>`<span class="pill" data-mealagain="${l.id}">${esc(l.slot||'Meal')}: ${esc(l.food.slice(0,22))}${l.food.length>22?'…':''} · ${l.kcal} kcal</span>`).join('')}</div>`:''}</div>`;
+}
+document.addEventListener('click',e=>{if(!S)return;const c=s=>e.target.closest(s);let el;
+  if(el=c('[data-mealadd]')){logType='meal';MB.slot=el.dataset.mealadd;MB.back=true;MB.date=key(viewDate);return show('log')}
+  if(el=c('[data-delmeal]')){S.logs=S.logs.filter(l=>l.id!==el.dataset.delmeal);save();return render()}
+  if(el=c('[data-mealagain]')){const l=S.logs.find(x=>x.id===el.dataset.mealagain);if(!l)return;
+    S.logs.push({...l,id:uid(),ts:Date.now(),date:key(viewDate),items:l.items.map(i=>({...i}))});save();checkProgress();render();floatXP(0,0,'+'+XP_LOG+' XP');return toast('Meal logged again ✓')}
+});
+
 /* ---------- Meal calculator (calories, protein, carbs, fat) ---------- */
-let MB={items:[],custom:false,goals:false,sug:[]};
+let MB={items:[],custom:false,goals:false,sug:[],back:false,date:null};
 const r0=Math.round,r1=n=>Math.round(n*10)/10,todayKey=()=>key(new Date());
 const GEN_U={cup:240,tbsp:15,tsp:5,slice:30,handful:28,scoop:30,can:330,bowl:250,plate:300,loaf:100,sandwich:200,bar:45,square:10,bag:28};
 const UNIT_RE='cups?|tbsp|tablespoons?|tsp|teaspoons?|slices?|pieces?|pcs?|scoops?|handfuls?|cans?|bowls?|plates?|loaf|loaves|sandwich(?:es)?|servings?|portions?|bars?|squares?|bags?|medium|large|small';
@@ -464,7 +482,7 @@ function mealHTML(){
     <button type="button" class="btn ghost full mt" data-mact="parse">✨ Calculate from my text</button><div class="meta mt" id="mealMsg"></div>
     <div id="mealItems"></div><div id="mealTot"></div>
     <button type="button" class="linkbtn" data-mact="custom">${MB.custom?'− Hide custom food':'＋ Add my own food (packaged or homemade)'}</button><div id="mealCustom"></div>
-    <label class="f">Date</label><input type="date" id="mealDate" name="date" value="${todayKey()}">
+    <label class="f">Date</label><input type="date" id="mealDate" name="date" value="${MB.date||todayKey()}">
     <div style="margin-top:12px"><button class="btn full">Save meal</button></div><p class="meta mt">Values are approximate (cooked or ready-to-eat food). Check the packaging for exact numbers.</p>`;
 }
 function drawMeal(){
@@ -515,7 +533,8 @@ function saveMeal(frm){
   const date=frm.date.value||todayKey(),t=mealTotals(MB.items);
   const items=MB.items.map(it=>{const x=mNutr(it);return {n:it.n,g:r0(x.g),k:r0(x.k),p:r1(x.p),c:r1(x.c),f:r1(x.f)}});
   S.logs.push({id:uid(),ts:Date.now(),type:'meal',slot:frm.slot.value,food:items.map(i=>`${i.n} ${i.g}g`).join(', '),kcal:r0(t.k),p:r1(t.p),c:r1(t.c),f:r1(t.f),items,date});
-  MB.items=[];MB.slot=null;autoTick('meal',parse(date));save();checkProgress();renderLog();floatXP(0,0,'+'+XP_LOG+' XP');toast('Meal logged ✓');
+  const back=MB.back;MB.items=[];MB.slot=null;MB.back=false;MB.date=null;autoTick('meal',parse(date));save();checkProgress();floatXP(0,0,'+'+XP_LOG+' XP');toast('Meal logged ✓');
+  if(back)show('today');else renderLog();
 }
 document.addEventListener('input',e=>{const t=e.target;if(!S||!t)return;
   if(t.id==='foodQ')return drawSug();
@@ -747,7 +766,7 @@ function renderSettings(){
 }
 
 function render(){if(!S)return;({today:renderToday,routines:renderRoutines,log:renderLog,connect:renderConnect,settings:renderSettings,quests:renderQuests,learn:renderLearn,hero:renderHero,train:renderTrain,meds:renderMeds,todos:renderTodos,money:renderMoney,progress:renderProgress})[view]()}
-function show(v){view=v;$$('main>section').forEach(s=>s.classList.toggle('hidden',s.id!=='v-'+v));const tabOf={connect:'settings',routines:'settings',log:'settings',meds:'settings',money:'settings',hero:'quests',progress:'today'};$$('nav.tabs button').forEach(b=>b.classList.toggle('on',b.dataset.tab===(tabOf[v]||v)));if(v!=='train')TEDIT=false;render();scrollTo(0,0)}
+function show(v){view=v;$$('main>section').forEach(s=>s.classList.toggle('hidden',s.id!=='v-'+v));const tabOf={connect:'settings',routines:'settings',log:'settings',meds:'settings',money:'settings',hero:'quests',progress:'today'};$$('nav.tabs button').forEach(b=>b.classList.toggle('on',b.dataset.tab===(tabOf[v]||v)));if(v!=='train')TEDIT=false;if(v!=='log'){MB.back=false;MB.date=null}render();scrollTo(0,0)}
 function toast(m){const t=$('#toast');t.textContent=m;t.classList.add('on');clearTimeout(t._t);t._t=setTimeout(()=>t.classList.remove('on'),2600)}
 
 /* ---------- Appearance ---------- */
@@ -1097,6 +1116,44 @@ document.addEventListener('visibilitychange',()=>{
   if(document.hidden){hiddenAt=Date.now();save();if(KEY&&+S.settings.lockAfter===0)lock()}
   else{if(KEY&&hiddenAt&&Date.now()-hiddenAt>=S.settings.lockAfter*60000)return lock();if(view==='today')renderToday();nudgeTick()}
 });
+
+/* ---------- Collapsible cards: collapse to save scrolling, pin to keep a card open ---------- */
+const cxUI=()=>{const u=S.ui=S.ui||{};u.c=u.c||{};u.p=u.p||{};return u};
+function cxApply(card){
+  const U=cxUI(),id=card.dataset.cxid,pin=!!U.p[id],col=!!U.c[id]&&!pin;
+  card.classList.toggle('cx-c',col);card.classList.toggle('cx-p',pin);
+  const t=card.querySelector('[data-cx-toggle]'),p=card.querySelector('[data-cx-pin]');
+  if(t){t.setAttribute('aria-expanded',String(!col));t.setAttribute('aria-label',col?'Expand':'Collapse')}
+  if(p){p.classList.toggle('on',pin);p.setAttribute('aria-pressed',String(pin));p.title=pin?'Pinned open. Tap to unpin':'Pin open'}
+}
+function decorateCards(){
+  if(!S)return;
+  document.querySelectorAll('main > section:not(.hidden)').forEach(sec=>{
+    const seen={},fresh=[...sec.querySelectorAll('.card:not([data-cx]),.syswin:not([data-cx])')].filter(c=>{
+      const h=c.firstElementChild;return h&&!c.matches('.nudge,.hero,[data-act]')&&h.matches('.sec-h,h2,.sys-h')&&(h.matches('h2')||(h.firstElementChild&&!/^(BUTTON|A|INPUT|SELECT|TEXTAREA|LABEL)$/.test(h.firstElementChild.tagName)))});
+    fresh.forEach(c=>{
+      const h=c.firstElementChild,te=h.matches('h2')?h:h.firstElementChild;
+      let id=sec.id+':'+(c.dataset.cid||((te.textContent||'').replace(/[\d.,:·%/]+/g,' ').replace(/\s+/g,' ').trim().slice(0,40)||'card'));
+      seen[id]=(seen[id]||0)+1;if(seen[id]>1)id+='#'+seen[id];
+      c.dataset.cx='1';c.dataset.cxid=id;
+      const tg=document.createElement('button');tg.type='button';tg.className='cxt';tg.dataset.cxToggle='1';tg.textContent='▾';
+      const pn=document.createElement('button');pn.type='button';pn.className='cxp';pn.dataset.cxPin='1';pn.textContent='📌';
+      te.prepend(tg);te.append(pn);cxApply(c);
+    });
+    const cards=[...sec.querySelectorAll('[data-cx]')];
+    if(cards.length>=3){const par=cards[0].parentElement;
+      if(![...par.children].some(x=>x.classList&&x.classList.contains('cxbar'))){
+        const bar=document.createElement('div');bar.className='cxbar';
+        bar.innerHTML='<button type="button" data-cx-all="c">⇕ Collapse all</button><button type="button" data-cx-all="e">Expand all</button>';par.insertBefore(bar,cards[0])}}
+  });
+}
+document.addEventListener('click',e=>{if(!S)return;const c=s=>e.target.closest(s);let el;
+  if(el=c('[data-cx-toggle]')){e.stopPropagation();const card=el.closest('[data-cx]'),U=cxUI(),id=card.dataset.cxid;if(U.c[id])delete U.c[id];else U.c[id]=1;save();return cxApply(card)}
+  if(el=c('[data-cx-pin]')){e.stopPropagation();const card=el.closest('[data-cx]'),U=cxUI(),id=card.dataset.cxid;if(U.p[id]){delete U.p[id];toast('Unpinned')}else{U.p[id]=1;delete U.c[id];toast('Pinned: this card stays open')}save();return cxApply(card)}
+  if(el=c('[data-cx-all]')){e.stopPropagation();const U=cxUI(),sec=el.closest('section'),collapse=el.dataset.cxAll==='c';
+    sec.querySelectorAll('[data-cx]').forEach(card=>{const id=card.dataset.cxid;if(collapse){if(!U.p[id])U.c[id]=1}else delete U.c[id];cxApply(card)});save()}
+},true);
+new MutationObserver(()=>decorateCards()).observe(document.querySelector('main'),{childList:true,subtree:true});
 
 /* ---------- Language learning ---------- */
 const LANGS=[['Spanish','es-ES'],['French','fr-FR'],['German','de-DE'],['Italian','it-IT'],['Portuguese','pt-BR'],['English','en-US'],['Turkish','tr-TR'],['Japanese','ja-JP'],['Korean','ko-KR'],['Chinese (Mandarin)','zh-CN'],['Russian','ru-RU'],['Dutch','nl-NL'],['Arabic','ar-SA'],['Hindi','hi-IN'],['Greek','el-GR'],['Swedish','sv-SE'],['Polish','pl-PL'],['Hebrew','he-IL']];

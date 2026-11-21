@@ -186,3 +186,17 @@ A purple quest-scroll logo: a checklist scroll with a golden ribbon and a glowin
 
 ## ℹ️ The name change (DayFlow → Kuestro)
 The app was renamed from DayFlow to Kuestro. A few internal names were kept on purpose so nothing you saved is lost: your data, theme and accent are still stored under the old `dayflow-…` keys, the calendar events keep their old IDs, and the Apple Health Shortcut works with either the old header `DAYFLOW` or the new `KUESTRO`. Existing backups still import.
+
+## 🥗 Meals card on Today
+Right under the **Water & drinks** card there is now a **Meals** card, followed by your **Meals & health** routines.
+- Today's calories, protein, carbs and fat, with progress bars if you set goals (🎯 Goals in *More → Log → Meal*).
+- **🌅 Breakfast · 🍽️ Lunch · 🌙 Dinner · 🍎 Snack** buttons open the meal calculator with that meal already chosen. After you save, you come straight back to Today.
+- The meals you logged today are listed with their calories (× removes one).
+- **Log again with one tap:** your last few meals appear as buttons, and one tap logs the same meal again for the day you're viewing.
+
+## ↕️ Collapse and pin cards
+Every card with a title has a **▾** arrow and a **📌** pin, on every screen:
+- Tap **▾** to fold a card down to its title (the rest of the card hides, so there's less scrolling). Tap again to open it. Your choice is remembered.
+- Tap **📌** to **pin a card open**. A pinned card stays expanded and is skipped by *Collapse all*. Unpin it to be able to fold it again.
+- **⇕ Collapse all** and **Expand all** appear at the top of any screen with three or more cards.
+- Cards that already fold by themselves (the "How to…" sections) and navigation cards (month/week arrows) are left as they are.
