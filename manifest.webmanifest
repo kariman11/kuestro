@@ -1,6 +1,6 @@
 {
-  "name": "DayFlow – Daily Routines",
-  "short_name": "DayFlow",
+  "name": "Kuestro – Daily Routines",
+  "short_name": "Kuestro",
   "description": "Routines, quests, training, meds, to-dos and money in one place.",
   "start_url": "./",
   "scope": "./",

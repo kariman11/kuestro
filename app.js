@@ -1,5 +1,5 @@
 'use strict';
-/* DayFlow – all data stays on this device (localStorage), AES-GCM encrypted when a passcode is set. */
+/* Kuestro – all data stays on this device (localStorage), AES-GCM encrypted when a passcode is set. */
 const $=s=>document.querySelector(s), $$=s=>[...document.querySelectorAll(s)];
 const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const pad=n=>String(n).padStart(2,'0');
@@ -59,6 +59,7 @@ function defaults(){
 function merge(p){
   const d=defaults();if(!p||!Array.isArray(p.routines))return d;
   const r={...d,...p,settings:{...d.settings,...p.settings},strava:{...d.strava,...p.strava},ai:{...d.ai,...p.ai},health:p.health||{},ptCache:p.ptCache||{},claimed:p.claimed||{},badges:p.badges||{},rerolls:p.rerolls||{},qSeen:p.qSeen||{},lang:{...d.lang,...p.lang},hero:{...d.hero,...p.hero},meds:p.meds||[],train:{...d.train,...p.train},cards:{...d.cards,...p.cards},todos:p.todos&&Array.isArray(p.todos.lists)?p.todos:d.todos,money:{...d.money,...p.money}};
+  r.routines.forEach(x=>{if(x.note==='DayFlow → Learn → Review')x.note='Kuestro → Learn → Review'});   // renamed app
   r.water={goal:2000,days:{},auto:{},...r.water};
   if(!r.routines.some(x=>x.link==='water')){const w=r.routines.find(x=>x.cat==='meals'&&/water/i.test(x.name));if(w)w.link='water'}
   return r;
@@ -314,10 +315,10 @@ function nudgeBannerHTML(){
 }
 async function nudgeNotify(){   // generic text on purpose: it can show on a locked screen
   if(!('Notification' in window)||Notification.permission!=='granted')return false;
-  const opts={body:'Time to log today’s progress ✨',tag:'dayflow-nudge',icon:'icon-192.png',badge:'icon-192.png'};
+  const opts={body:'Time to log today’s progress ✨',tag:'kuestro-nudge',icon:'icon-192.png',badge:'icon-192.png'};
   try{const reg=await (navigator.serviceWorker&&navigator.serviceWorker.getRegistration?navigator.serviceWorker.getRegistration():null);
-    if(reg&&reg.showNotification)await reg.showNotification('🌙 DayFlow',opts);else new Notification('🌙 DayFlow',opts);return true}
-  catch(e){try{new Notification('🌙 DayFlow',opts);return true}catch(e2){return false}}
+    if(reg&&reg.showNotification)await reg.showNotification('🌙 Kuestro',opts);else new Notification('🌙 Kuestro',opts);return true}
+  catch(e){try{new Notification('🌙 Kuestro',opts);return true}catch(e2){return false}}
 }
 function nudgeTick(){
   if(!S)return;const n=nudgeState();
@@ -327,19 +328,19 @@ function nudgeTick(){
 setInterval(nudgeTick,30000);
 function nudgeHTML(){
   const perm='Notification' in window?Notification.permission:'unsupported';
-  const note=perm==='granted'?'Notifications are on. You get one while DayFlow is open or in the background.':perm==='denied'?'Notifications are blocked for this site in your browser settings. The banner and the calendar alert still work.':perm==='unsupported'?'Notifications aren’t available here (on iPhone, add DayFlow to your Home Screen). The banner and the calendar alert still work.':'Allow notifications to get an alert while DayFlow is open or in the background.';
+  const note=perm==='granted'?'Notifications are on. You get one while Kuestro is open or in the background.':perm==='denied'?'Notifications are blocked for this site in your browser settings. The banner and the calendar alert still work.':perm==='unsupported'?'Notifications aren’t available here (on iPhone, add Kuestro to your Home Screen). The banner and the calendar alert still work.':'Allow notifications to get an alert while Kuestro is open or in the background.';
   return `<h2>🌙 Evening check-in</h2><p class="meta">A reminder before the day ends to log your progress: routines, water and meals.</p>
     <label style="display:flex;gap:8px;align-items:center"><input type="checkbox" data-nudge="on" ${nudgeOn()?'checked':''}> Remind me to log my day</label>
     <label class="f">Remind me at</label><input type="time" data-nudge="time" value="${nudgeAt()}">
     <div class="row mt"><button type="button" class="btn ghost" data-nact="ics">📅 Add a daily alert to my calendar</button>${perm==='default'?`<button type="button" class="btn ghost" data-nact="perm">🔔 Allow notifications</button>`:perm==='granted'?`<button type="button" class="btn ghost" data-nact="test">Send a test alert</button>`:''}</div>
-    <p class="meta mt">${note}</p><p class="meta"><b>Tip:</b> the calendar alert is the only one that can ring when DayFlow is fully closed. Open the downloaded file once and your calendar adds a daily alert.</p>`;
+    <p class="meta mt">${note}</p><p class="meta"><b>Tip:</b> the calendar alert is the only one that can ring when Kuestro is fully closed. Open the downloaded file once and your calendar adds a daily alert.</p>`;
 }
 function nudgeIcs(){
-  const L=icsHead('DayFlow evening check-in'),t=nudgeAt().replace(':',''),url=location.href.split('#')[0].split('?')[0];
+  const L=icsHead('Kuestro evening check-in'),t=nudgeAt().replace(':',''),url=location.href.split('#')[0].split('?')[0];
   L.push('BEGIN:VEVENT','UID:evening-checkin@dayflow',`DTSTAMP:${stamp()}`,`DTSTART:${todayK().replace(/-/g,'')}T${t}00`,'DURATION:PT10M','RRULE:FREQ=DAILY',
-    `SUMMARY:${icsEsc('🌙 Log your day in DayFlow')}`,`DESCRIPTION:${icsEsc('Tick off what you did today and log your water and meals.')}`,`URL:${url}`,
-    'BEGIN:VALARM','ACTION:DISPLAY',`DESCRIPTION:${icsEsc('Log your day in DayFlow')}`,'TRIGGER:PT0M','END:VALARM','END:VEVENT','END:VCALENDAR');
-  download(L.join('\r\n'),'dayflow-evening-checkin.ics','text/calendar');toast('Calendar alert downloaded. Open it to add it.');
+    `SUMMARY:${icsEsc('🌙 Log your day in Kuestro')}`,`DESCRIPTION:${icsEsc('Tick off what you did today and log your water and meals.')}`,`URL:${url}`,
+    'BEGIN:VALARM','ACTION:DISPLAY',`DESCRIPTION:${icsEsc('Log your day in Kuestro')}`,'TRIGGER:PT0M','END:VALARM','END:VEVENT','END:VCALENDAR');
+  download(L.join('\r\n'),'kuestro-evening-checkin.ics','text/calendar');toast('Calendar alert downloaded. Open it to add it.');
 }
 document.addEventListener('change',e=>{const t=e.target;if(!S||!t||!t.dataset||!t.dataset.nudge)return;
   if(t.dataset.nudge==='on')S.settings.nudge=t.checked;else S.settings.nudgeTime=/^\d\d:\d\d$/.test(t.value)?t.value:NUDGE_DEF;
@@ -651,29 +652,29 @@ function parseNum(v){
   const n=parseFloat(s);return isNaN(n)?null:n;
 }
 function importHealth(text){
-  if(!/DAYFLOW/i.test(text||''))throw new Error('No DayFlow health data found. Run the Shortcut first.');
+  if(!/DAYFLOW|KUESTRO/i.test(text||''))throw new Error('No Kuestro health data found. Run the Shortcut first.');
   let date=key(new Date());const vals={};
   text.split(/\r?\n/).forEach(line=>{const m=line.match(/^\s*([a-z_]+)\s*[=:]\s*(.+)$/i);if(!m)return;const k=m[1].toLowerCase();
     if(k==='date'){const d=m[2].match(/\d{4}-\d{2}-\d{2}/);if(d)date=d[0]}
     else if(HKEYS[k]){const n=parseNum(m[2]);if(n!=null)vals[k]=Math.round(n*10)/10}});
-  if(!Object.keys(vals).length)throw new Error('Found DAYFLOW but no numbers.');
+  if(!Object.keys(vals).length)throw new Error('Found the header but no numbers.');
   S.health[date]={...S.health[date],...vals};save();checkProgress();return date;
 }
 const HEALTH_STEPS=`<ol class="meta">
-<li>Open the <b>Shortcuts</b> app → <b>+</b>. Name it <b>DayFlow Health</b>.</li>
+<li>Open the <b>Shortcuts</b> app → <b>+</b>. Name it <b>Kuestro Health</b>.</li>
 <li>Add <b>Find Health Samples</b>: Type <i>Steps</i>, Start Date <i>is today</i>. Then add <b>Calculate Statistics</b> → <i>Sum</i>.</li>
 <li>Repeat for <i>Active Energy</i> (Sum) and <i>Exercise Minutes</i> (Sum). Optional: <i>Weight</i> → sort by Start Date, Latest First, Limit 1.</li>
-<li>Add a <b>Text</b> action and type this, inserting each result where shown:<br><code>DAYFLOW<br>steps=[Steps sum]<br>active_kcal=[Active Energy sum]<br>exercise_min=[Exercise sum]<br>weight=[Weight]</code></li>
+<li>Add a <b>Text</b> action and type this, inserting each result where shown:<br><code>KUESTRO<br>steps=[Steps sum]<br>active_kcal=[Active Energy sum]<br>exercise_min=[Exercise sum]<br>weight=[Weight]</code></li>
 <li>Add <b>Copy to Clipboard</b>. Run it once and allow Health access.</li>
-<li>Optional: <b>Automation</b> tab → Time of Day (e.g. 9:30 PM) → run DayFlow Health, so it’s ready every evening.</li>
-<li>Open DayFlow → <b>Import from Health</b>.</li></ol>`;
+<li>Optional: <b>Automation</b> tab → Time of Day (e.g. 9:30 PM) → run Kuestro Health, so it’s ready every evening.</li>
+<li>Open Kuestro → <b>Import from Health</b>.</li></ol>`;
 
 /* ---------- Connect tab ---------- */
 function renderConnect(){
   const s=S.strava,dis=KEY?'':'disabled',a=S.ai;
   let h=KEY
     ?`<div class="card ok"><b>🔒 Private and encrypted.</b><p class="meta" style="margin-top:4px">Everything is stored only on this phone, encrypted with your passcode. People who open your GitHub Pages link just see an empty, locked-down copy of the app.</p></div>`
-    :`<div class="card warn"><b>🔓 Set a passcode first</b><p class="meta" style="margin-top:4px">Connecting accounts means storing private keys. DayFlow only stores them encrypted, so turn on a passcode first.</p><button class="btn" data-act="goSecurity">Set passcode</button></div>`;
+    :`<div class="card warn"><b>🔓 Set a passcode first</b><p class="meta" style="margin-top:4px">Connecting accounts means storing private keys. Kuestro only stores them encrypted, so turn on a passcode first.</p><button class="btn" data-act="goSecurity">Set passcode</button></div>`;
   // Strava
   h+=`<div class="card"><h2>🟧 Strava</h2>`;
   if(s.refresh){
@@ -681,7 +682,7 @@ function renderConnect(){
   }else{
     h+=`<fieldset ${dis}><p class="meta">Imports your runs and workouts automatically. It uses your own free Strava API key, so nobody else is involved.</p>
     <details ${s.clientId?'':'open'}><summary>One-time setup (5 min)</summary><ol class="meta">
-      <li>Open <a href="https://www.strava.com/settings/api" target="_blank" rel="noopener noreferrer">strava.com/settings/api</a> and create an app: name <i>DayFlow</i>, category <i>Training</i>, website = your app link.</li>
+      <li>Open <a href="https://www.strava.com/settings/api" target="_blank" rel="noopener noreferrer">strava.com/settings/api</a> and create an app: name <i>Kuestro</i>, category <i>Training</i>, website = your app link.</li>
       <li>Set <b>Authorization Callback Domain</b> to <code>${esc(location.hostname||'YOUR-USERNAME.github.io')}</code></li>
       <li>Paste the <b>Client ID</b> and <b>Client Secret</b> below and tap Connect.</li></ol></details>
     <form id="fStrava" class="mt"><div class="row"><input name="clientId" placeholder="Client ID" inputmode="numeric" value="${esc(s.clientId)}" autocomplete="off"><input name="clientSecret" type="password" placeholder="${s.clientSecret?'Secret saved ✓':'Client Secret'}" autocomplete="off"></div><button class="btn full mt">Connect Strava</button></form>
@@ -690,13 +691,13 @@ function renderConnect(){
   h+=`</div>`;
   // Health
   const hd=S.health[key(new Date())];
-  h+=`<div class="card"><h2>❤️ Apple Health</h2><p class="meta">Apple doesn’t let websites read Health, so an iPhone Shortcut copies today’s numbers and DayFlow imports them with one tap.${hd?'<br><b>Today:</b> '+esc(healthLine(hd)):''}</p>
+  h+=`<div class="card"><h2>❤️ Apple Health</h2><p class="meta">Apple doesn’t let websites read Health, so an iPhone Shortcut copies today’s numbers and Kuestro imports them with one tap.${hd?'<br><b>Today:</b> '+esc(healthLine(hd)):''}</p>
     <button class="btn full" data-act="healthImport">Import from Health</button>
     <div id="healthPaste" class="hidden mt"><textarea id="healthText" rows="4" placeholder="Paste the Shortcut’s text here"></textarea><button class="btn ghost full mt" data-act="healthPasteGo">Import pasted text</button></div>
     <details><summary>Set up the Shortcut (once)</summary>${HEALTH_STEPS}</details>
-    <p class="meta mt">💡 <b>Workouts:</b> connect Apple Health inside the Strava app’s settings. Your Apple Watch and Health workouts then go to Strava, and from there into DayFlow automatically.</p></div>`;
+    <p class="meta mt">💡 <b>Workouts:</b> connect Apple Health inside the Strava app’s settings. Your Apple Watch and Health workouts then go to Strava, and from there into Kuestro automatically.</p></div>`;
   // AI
-  h+=`<div class="card"><h2>🤖 Claude & ChatGPT</h2><p class="meta">Without keys, the <b>Ask</b> buttons in Log open Claude or ChatGPT with your plan and data. With an API key (billed by them), the answer shows right inside DayFlow.</p>
+  h+=`<div class="card"><h2>🤖 Claude & ChatGPT</h2><p class="meta">Without keys, the <b>Ask</b> buttons in Log open Claude or ChatGPT with your plan and data. With an API key (billed by them), the answer shows right inside Kuestro.</p>
     <fieldset ${dis}><form id="fAI">
       <label class="f">Claude API key (<a href="https://console.anthropic.com/settings/keys" target="_blank" rel="noopener noreferrer">console.anthropic.com</a>)</label>
       <div class="row"><input name="claudeKey" type="password" placeholder="${a.claudeKey?'Saved ✓ (type to replace)':'sk-ant-…'}" autocomplete="off"><input name="claudeModel" value="${esc(a.claudeModel)}" style="flex:0 0 40%" aria-label="Claude model"></div>
@@ -782,10 +783,10 @@ $('#rDel').onclick=()=>{if(editing&&confirm(`Delete “${editing.name}”?`)){S.
 
 /* ---------- Calendar exports ---------- */
 const icsEsc=s=>String(s).replace(/[\\,;]/g,m=>'\\'+m).replace(/\n/g,'\\n');
-const icsHead=name=>['BEGIN:VCALENDAR','VERSION:2.0','PRODID:-//DayFlow//EN','CALSCALE:GREGORIAN','X-WR-CALNAME:'+name];
+const icsHead=name=>['BEGIN:VCALENDAR','VERSION:2.0','PRODID:-//Kuestro//EN','CALSCALE:GREGORIAN','X-WR-CALNAME:'+name];
 const stamp=()=>new Date().toISOString().replace(/[-:]/g,'').split('.')[0]+'Z';
 function routinesIcs(){
-  const now=new Date(),BY=['SU','MO','TU','WE','TH','FR','SA'],L=icsHead('DayFlow routines'),st=stamp();
+  const now=new Date(),BY=['SU','MO','TU','WE','TH','FR','SA'],L=icsHead('Kuestro routines'),st=stamp();
   S.routines.forEach(r=>{
     if(r.freq==='weekly'&&!r.days.length)return;
     let start=parse(r.start||key(now));if(key(start)<key(now))start=addDays(now,0);
@@ -799,7 +800,7 @@ function routinesIcs(){
     else L.push(`DTSTART;VALUE=DATE:${ds}`,`RRULE:${rule}`);
     L.push('END:VEVENT');
   });
-  L.push('END:VCALENDAR');download(L.join('\r\n'),'dayflow-routines.ics','text/calendar');toast('Calendar file downloaded');
+  L.push('END:VCALENDAR');download(L.join('\r\n'),'kuestro-routines.ics','text/calendar');toast('Calendar file downloaded');
 }
 async function prayerIcs(){
   try{
@@ -911,7 +912,7 @@ document.addEventListener('submit',async e=>{const H=SUBMIT[e.target.id];if(!H)r
 /* ---------- clicks ---------- */
 document.addEventListener('click',async e=>{
   const c=s=>e.target.closest(s);let el;
-  if(el=c('[data-act="forgot"]')){if(confirm('Erase ALL DayFlow data on this device and start over? This can’t be undone.')){localStorage.removeItem(STORE);location.reload()}return}
+  if(el=c('[data-act="forgot"]')){if(confirm('Erase ALL Kuestro data on this device and start over? This can’t be undone.')){localStorage.removeItem(STORE);location.reload()}return}
   if(el=c('[data-act="copyCode"]')){const v=$('#handoffCode').value;try{await navigator.clipboard.writeText(v);toast('Copied')}catch(err){$('#handoffCode').select()}return}
   if(c('#qc'))return nextQC();
   if(!S)return;
@@ -1033,7 +1034,7 @@ document.addEventListener('click',async e=>{
     case 'aiClear':Object.assign(S.ai,{claudeKey:'',openaiKey:''});save();renderConnect();return toast('Keys removed');
     case 'healthImport':
       try{const txt=await navigator.clipboard.readText();const d=importHealth(txt);toast(`Health data imported for ${d} ✓`);renderConnect()}
-      catch(err){$('#healthPaste').classList.remove('hidden');toast(err.message&&/DAYFLOW|numbers/.test(err.message)?err.message:'Paste the text below instead')}
+      catch(err){$('#healthPaste').classList.remove('hidden');toast(err.message&&/DAYFLOW|KUESTRO|numbers/.test(err.message)?err.message:'Paste the text below instead')}
       return;
     case 'healthPasteGo':
       try{const d=importHealth($('#healthText').value);toast(`Health data imported for ${d} ✓`);renderConnect()}catch(err){toast(err.message)}
@@ -1046,7 +1047,7 @@ document.addEventListener('click',async e=>{
     case 'export':{
       const data={...S,ptCache:{},strava:{...S.strava,clientSecret:'',access:'',refresh:'',expires:0},ai:{...S.ai,claudeKey:'',openaiKey:''}};
       const out=KEY?{dayflowBackup:1,...await encryptWith(KEY,SALT,JSON.stringify(data))}:data;
-      return download(JSON.stringify(out),`dayflow-backup-${key(new Date())}.json`,'application/json');
+      return download(JSON.stringify(out),`kuestro-backup-${key(new Date())}.json`,'application/json');
     }
     case 'reset':if(confirm('Erase all routines, check-ins, logs and keys on this device?')){KEY=null;SALT=null;S=defaults();await save();show('today')}return;
     case 'geo':
@@ -1380,7 +1381,7 @@ function renderHero(){
     <label class="f">Motto (optional)</label><input id="heroMotto" maxlength="40" placeholder="e.g. One more step" value="${esc(HD.motto||'')}" autocomplete="off"></div>`;
   h+=`<div class="card"><h2>Class</h2><p class="meta">Each class has its own outfit and a bonus for one kind of activity. You can switch any time.</p><div class="classes">${Object.entries(CLASSES).map(([k,c])=>`<button class="cls ${HD.cls===k?'on':''}" data-opt="cls" data-val="${k}">${avatarSVG({...HD,cls:k},L,52)}<span>${c.e} ${c.n}</span><small>${c.perk}</small></button>`).join('')}</div></div>`;
   h+=`<div class="card"><h2>Look</h2>
-    <label class="f">Character art</label><div class="chips">${[['0','🎨 Drawn by DayFlow'],['1','🖼️ My own image']].map(([v,l])=>`<label><input type="radio" ${(HD.useImg&&okImg(HD.img)?'1':'0')===v?'checked':''}><span data-opt="useImg" data-val="${v}">${l}</span></label>`).join('')}</div>
+    <label class="f">Character art</label><div class="chips">${[['0','🎨 Drawn by Kuestro'],['1','🖼️ My own image']].map(([v,l])=>`<label><input type="radio" ${(HD.useImg&&okImg(HD.img)?'1':'0')===v?'checked':''}><span data-opt="useImg" data-val="${v}">${l}</span></label>`).join('')}</div>
     ${HD.useImg?`<div class="mt"><label class="btn ${okImg(HD.img)?'ghost':''} full">📤 ${okImg(HD.img)?'Change illustration':'Upload your anime illustration'}<input type="file" id="heroImg" accept="image/*" hidden></label><p class="meta mt">Upload a full anime illustration (portrait or half-body works best). It becomes your character card on Quests and Today and appears in every QUEST CLEAR screen. It's stored only on this phone, never on GitHub.</p></div>`:''}
     <label class="f">Art style</label><div class="chips">${[['chibi','🍡 Cute (kawaii)'],['hunter','⚔️ Hunter (dark anime)']].map(([v,l])=>`<label><input type="radio" ${(HD.style||'chibi')===v?'checked':''}><span data-opt="style" data-val="${v}">${l}</span></label>`).join('')}</div>
     ${hun?`<label class="f">Face</label><div class="chips">${[['sharp','Sharp'],['soft','Soft (long lashes)'],['mature','Mature (longer)']].map(([v,l])=>`<label><input type="radio" ${(HD.face||'sharp')===v?'checked':''}><span data-opt="face" data-val="${v}">${l}</span></label>`).join('')}</div>
@@ -1563,7 +1564,7 @@ function medsIcs(){
         'BEGIN:VALARM','ACTION:DISPLAY',`DESCRIPTION:${icsEsc('Time for '+m.name)}`,'TRIGGER:PT0M','END:VALARM','END:VEVENT');
     });
   });
-  L.push('END:VCALENDAR');download(L.join('\r\n'),'dayflow-medications.ics','text/calendar');toast('Medication calendar downloaded');
+  L.push('END:VCALENDAR');download(L.join('\r\n'),'kuestro-medications.ics','text/calendar');toast('Medication calendar downloaded');
 }
 
 /* ---------- Training program (rotational) ---------- */
@@ -1687,7 +1688,7 @@ function renderTrain(){
 }
 function renderTrainEdit(){
   const T=T_();
-  let h=`<div class="card"><h2>Training days</h2><p class="meta">Pick your days. The workouts below rotate across them. <b>Weight</b> is your current working weight: it goes up by itself when you lift more, and DayFlow tells you when it is time to add weight.</p><div class="chips">${[6,0,1,2,3,4,5].map(i=>`<label><input type="checkbox" data-tday="${i}" ${T.days.includes(i)?'checked':''}><span>${DAYS[i]}</span></label>`).join('')}</div>
+  let h=`<div class="card"><h2>Training days</h2><p class="meta">Pick your days. The workouts below rotate across them. <b>Weight</b> is your current working weight: it goes up by itself when you lift more, and Kuestro tells you when it is time to add weight.</p><div class="chips">${[6,0,1,2,3,4,5].map(i=>`<label><input type="checkbox" data-tday="${i}" ${T.days.includes(i)?'checked':''}><span>${DAYS[i]}</span></label>`).join('')}</div>
     <div class="row mt"><div><label class="f">Units</label><select id="tUnit"><option ${T.unit==='kg'?'selected':''}>kg</option><option ${T.unit==='lb'?'selected':''}>lb</option></select></div></div></div>`;
   T.plan.forEach((p,di)=>{
     h+=`<div class="card"><div class="row"><span class="rnum" style="flex:0 0 auto">${di+1}</span><input data-pe="${di}::name" value="${esc(p.name)}" placeholder="Workout name"></div>
@@ -2012,10 +2013,10 @@ function renderMoney(){
     return head+`<div class="txrow"><span class="ce">${(MCATS[x.cat]||MCATS.other)[0]}</span><div class="grow"><div>${esc(x.merchant||(MCATS[x.cat]||MCATS.other)[1])}</div><select class="txcat" data-txcat="${x.id}">${catOpts(x.cat)}</select></div><b class="${x.type==='income'?'pos':''}">${x.type==='income'?'+':'−'}${fmtMoney(x.amount,x.cur)}</b><button class="tb2" data-txdel="${x.id}" aria-label="Delete">×</button></div>`}).join('')+`</div>`}
   else if(!IMPORT)h+=`<div class="empty">No transactions in ${label} yet.<br>Import your bank SMS or add one manually.</div>`;
   h+=`<div class="card"><details><summary style="margin:0">📱 How to get bank messages in automatically</summary><ol class="meta">
-    <li><b>Android:</b> install DayFlow from Chrome (⋮ → Install app). Then long-press any bank SMS → <b>Share</b> → <b>DayFlow</b>. It opens ready to import.</li>
+    <li><b>Android:</b> install Kuestro from Chrome (⋮ → Install app). Then long-press any bank SMS → <b>Share</b> → <b>Kuestro</b>. It opens ready to import.</li>
     <li><b>iPhone:</b> Shortcuts → <b>Automation</b> → + → <b>Message</b> → Sender = your bank (or Message contains “EGP”) → <b>Run Immediately</b>. Action: <b>Append to Text File</b> (Shortcut Input → file “bank.txt” in iCloud Drive). Once in a while, tap <b>Import bank SMS → Open file</b> and pick bank.txt. Duplicates are skipped.</li>
     <li><b>Any phone:</b> copy one or many messages, then tap <b>Paste from clipboard</b>.</li>
-    <li>Change a category once and DayFlow remembers it for that shop next time.</li></ol></details>
+    <li>Change a category once and Kuestro remembers it for that shop next time.</li></ol></details>
     <details><summary>⚙️ Currency & budget</summary><form id="fMoneySet" class="row mt"><div><label class="f">Currency</label><input name="cur" value="${esc(M.cur)}" maxlength="5"></div><div><label class="f">Monthly budget</label><input name="budget" type="number" min="0" step="any" value="${M.budget||''}" placeholder="optional"></div><button class="btn" style="flex:0 0 auto;align-self:flex-end">Save</button></form></details></div>`;
   $('#moneyBody').innerHTML=h;
 }
@@ -2336,7 +2337,7 @@ function celebrate(icon,title,sub){showQC({theme:String(icon).startsWith('<svg')
 function start(){
   if(!S.lang.seeded){
     const t=todayK(),r=(name,freq,extra)=>({id:uid(),name,cat:'language',freq,time:'',note:'',start:t,days:[],dom:1,every:2,...extra});
-    S.routines.push(r('Duolingo lesson','daily',{time:'08:00',note:'Then add the words you got wrong to your deck'}),r('Review flashcards','daily',{time:'21:30',note:'DayFlow → Learn → Review'}),
+    S.routines.push(r('Duolingo lesson','daily',{time:'08:00',note:'Then add the words you got wrong to your deck'}),r('Review flashcards','daily',{time:'21:30',note:'Kuestro → Learn → Review'}),
       r('Listening: podcast or video, 15 min','weekly',{days:[0,2,4],time:'19:00'}),r('Speaking: listen, repeat out loud, 5 min','interval',{every:2,time:'20:00'}),r('Conversation practice (tutor or AI)','weekly',{days:[5],time:'17:00'}));
     S.lang.seeded=true;save();
   }

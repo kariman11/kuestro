@@ -1,15 +1,15 @@
-# DayFlow
+# Kuestro
 
 A private routine app for prayer, skin care, workouts, runs, reading and meals. It connects to Strava, Apple Health (through an iPhone Shortcut), Claude and ChatGPT. It works offline and can be added to your home screen.
 
 ## 1. Publish on GitHub Pages
-1. On github.com create a new repository, e.g. `dayflow`.
-2. **Add file → Upload files** and upload everything here: `index.html`, `app.js`, `sw.js`, `manifest.webmanifest`, `icon.svg`, `icon-192.png`, `icon-512.png`.
+1. On github.com create a new repository, e.g. `kuestro`.
+2. **Add file → Upload files** and upload everything here: `index.html`, `app.js`, `foods.js`, `theme.js`, `sw.js`, `manifest.webmanifest`, `icon.svg`, `icon-192.png`, `icon-512.png`.
 3. **Settings → Pages → Deploy from a branch → main → / (root) → Save.**
-4. After about a minute the app is live at `https://YOUR-USERNAME.github.io/dayflow/`.
+4. After about a minute the app is live at `https://YOUR-USERNAME.github.io/kuestro/`.
 
 ## 2. Add to your home screen
-- iPhone (Safari): Share → **Add to Home Screen**. Always open DayFlow from this icon.
+- iPhone (Safari): Share → **Add to Home Screen**. Always open Kuestro from this icon.
 - Android (Chrome): ⋮ → **Install app**.
 
 ## 3. Lock it (do this first)
@@ -23,16 +23,16 @@ Go to **Settings → Passcode lock**. Your data is encrypted on your phone with 
 
 ## 4. Connect Strava
 1. Go to https://www.strava.com/settings/api and create an app. Set **Authorization Callback Domain** = `YOUR-USERNAME.github.io`.
-2. In DayFlow go to **Connect → Strava**, paste the Client ID and Secret, and tap **Connect**.
-3. If Strava sends you back to Safari instead of the app, copy the code it shows. Then open DayFlow from your home screen and go to **Connect → Strava → Got a code?**
-Runs are logged as runs and everything else as workouts. They also tick off your Run and Workout routines. DayFlow syncs whenever you open it, at most once an hour.
+2. In Kuestro go to **Connect → Strava**, paste the Client ID and Secret, and tap **Connect**.
+3. If Strava sends you back to Safari instead of the app, copy the code it shows. Then open Kuestro from your home screen and go to **Connect → Strava → Got a code?**
+Runs are logged as runs and everything else as workouts. They also tick off your Run and Workout routines. Kuestro syncs whenever you open it, at most once an hour.
 
-**Apple Watch / Health workouts:** connect Apple Health in the Strava app. Workouts then go Health → Strava → DayFlow.
+**Apple Watch / Health workouts:** connect Apple Health in the Strava app. Workouts then go Health → Strava → Kuestro.
 
 ## 5. Apple Health (steps, active calories, exercise minutes, weight)
 Apple doesn't let any website read Health, so an iPhone Shortcut does it. The steps are inside the app under **Connect → Apple Health → Set up the Shortcut**. The Shortcut copies something like:
 ```
-DAYFLOW
+KUESTRO
 steps=8432
 active_kcal=540
 exercise_min=45
@@ -42,7 +42,7 @@ Then tap **Import from Health**. Add a daily Automation in the Shortcuts app so 
 
 ## 6. Prayer app
 Add your prayer app under **Connect → App shortcuts**, then pick it under **Prayer app**.
-- **iPhone:** in the Shortcuts app, make a shortcut with one action, **Open App → (your app)**, named e.g. "Open Muslim Pro". In DayFlow choose "iPhone app (via Shortcuts)" and enter that name. This works for any app.
+- **iPhone:** in the Shortcuts app, make a shortcut with one action, **Open App → (your app)**, named e.g. "Open Muslim Pro". In Kuestro choose "iPhone app (via Shortcuts)" and enter that name. This works for any app.
 - **Android:** choose "Android app" and enter the package name, e.g. `com.bitsmedia.android.muslimpro`.
 
 Set the same calculation method in **Settings** so the times match your app. "Add this month's prayer times to my calendar" gives you an alert for each prayer.
@@ -50,10 +50,10 @@ Set the same calculation method in **Settings** so the times match your app. "Ad
 ## 7. Claude / ChatGPT coach
 In the **Log** tab, write your workout plan and tap **Ask Claude** or **Ask ChatGPT**.
 - With no keys, it copies your plan plus 4 weeks of training and health data, then opens the Claude or ChatGPT app.
-- With an API key (Connect tab, stored encrypted), the answer appears inside DayFlow. API use is billed by Anthropic or OpenAI, so set a low spending limit on the key.
+- With an API key (Connect tab, stored encrypted), the answer appears inside Kuestro. API use is billed by Anthropic or OpenAI, so set a low spending limit on the key.
 
 ## Updating the app later
-Upload the changed files again and change `dayflow-v5` in `sw.js` (to `v6` and so on) so phones get the update.
+Upload the changed files again and change the version in `sw.js` (for example `kuestro-v22` to `kuestro-v23`) so phones get the update.
 
 ## Quests & levels 🏆
 - **XP:** +10 per routine, +15 per prayer, +5 per log entry, +100 per badge.
@@ -68,7 +68,7 @@ Upload the changed files again and change `dayflow-v5` in `sw.js` (to `v6` and s
 - **Pick your language** the first time you open Learn: level, daily goal, new words per day, native language.
 - **Duolingo:** tap 🦉 *Open Duolingo*, do your lesson, then log it under *Log practice* (minutes, plus XP and streak if you like). That ticks off your "Duolingo lesson" routine. Duolingo has no public API, so this part is manual. On iPhone you can set the Duolingo link to a Shortcut link (`shortcuts://run-shortcut?name=Open%20Duolingo`) so it always opens the app.
 - **Flashcards with spaced repetition:** add the words you got wrong, one at a time or many at once (`word = meaning | example`). *Review* shows each card at the right moment (Again / Hard / Good / Easy). 🔊 reads it aloud and 🎤 *Say it* checks your pronunciation (Chrome / Safari).
-- **AI tutor:** a story using your words, a quiz, conversation practice, help with words you keep forgetting, and writing correction. It uses Claude or ChatGPT, answering inside DayFlow if you saved an API key and opening the app otherwise.
+- **AI tutor:** a story using your words, a quiz, conversation practice, help with words you keep forgetting, and writing correction. It uses Claude or ChatGPT, answering inside Kuestro if you saved an API key and opening the app otherwise.
 - **Language quests and badges:** one language quest every day and every week, +2 XP per flashcard, and badges for 100 and 500 words, 50 words mastered and 10 hours of practice.
 - **Starter routines:** Duolingo (daily), flashcards (daily), listening (3×/week), speaking (every 2 days) and conversation (weekly). You can edit them in Routines.
 
@@ -122,9 +122,9 @@ The Hunter style now has a **black techwear jacket** (high zip collar, straps, o
 **More → Settings → Accent color → 🟠 Night orange** gives the whole app the same orange-and-black look.
 
 ## 💰 Money (More → Money)
-- **Import bank SMS:** paste one or many messages, use *Paste from clipboard*, or *Open file*. DayFlow reads the amount, whether it's spending or income, the shop, the date and the card, in **English and Arabic**. It skips OTP and balance-only messages and skips duplicates.
+- **Import bank SMS:** paste one or many messages, use *Paste from clipboard*, or *Open file*. Kuestro reads the amount, whether it's spending or income, the shop, the date and the card, in **English and Arabic**. It skips OTP and balance-only messages and skips duplicates.
 - **Auto-categories:** groceries, food, transport and fuel, bills, shopping, health, fitness, subscriptions, education, home, transfers, cash, gifts. Change a category once and it remembers that shop.
-- **Android:** after installing from Chrome, long-press a bank SMS → **Share → DayFlow**.
+- **Android:** after installing from Chrome, long-press a bank SMS → **Share → Kuestro**.
 - **iPhone:** a Shortcuts *Message* automation appends bank SMS to `bank.txt`, which you import with *Open file*.
 - Monthly total, comparison with last month, a daily average, a **budget** bar with the daily amount you can spend to stay on track, and a "where it went" breakdown you can tap to filter.
 - Foreign-currency charges (e.g. USD) are listed but kept out of your main-currency totals.
@@ -151,13 +151,13 @@ Tap the progress bar on **Today**, the **📈 Weekly & monthly progress** button
 - **Routines:** each one's done vs due, with weak spots marked *needs attention*.
 
 ## 🍡 Cute character style (default)
-The character is now drawn in a soft **kawaii style**: rounded bangs, big glossy eyes, blush, a pastel background and rounded accessories (bow, cat ears, flower, curly ahoge). The Quests card is a soft pastel **Hero card** instead of the dark STATUS window. New characters start in the cute style. Existing characters keep their current style; switch any time in the character editor under *Art style* (**🍡 Cute** or **⚔️ Hunter**; the Hunter-only options like glowing eyes and night city appear only for Hunter). The Hunter style also got curtain bangs, thinner lashes and a rounder face. Hair names changed: *Spiky hero → Tufty*, *Wolf cut → Fluffy*. Bump `dayflow-v17` in `sw.js` when you upload so phones refresh.
+The character is now drawn in a soft **kawaii style**: rounded bangs, big glossy eyes, blush, a pastel background and rounded accessories (bow, cat ears, flower, curly ahoge). The Quests card is a soft pastel **Hero card** instead of the dark STATUS window. New characters start in the cute style. Existing characters keep their current style; switch any time in the character editor under *Art style* (**🍡 Cute** or **⚔️ Hunter**; the Hunter-only options like glowing eyes and night city appear only for Hunter). The Hunter style also got curtain bangs, thinner lashes and a rounder face. Hair names changed: *Spiky hero → Tufty*, *Wolf cut → Fluffy*. Bump the version in `sw.js` when you upload so phones refresh.
 
 ## 🎯 Planned weight per exercise
 In **Train → Edit program**, each exercise has a **Weight** box (next to Sets, Reps and Rest). When you start that workout, every set is pre-filled with that weight and the card shows **🎯 62.5 kg**. Leave it empty to keep the old behavior (last time's weights are filled in). You can still change the weight on any set during the workout. The AI coach also sees the planned weights.
 
 ## 🥗 Meal calculator (Log → Meal)
-Log what you ate and DayFlow adds up the **calories, protein, carbs and fat**.
+Log what you ate and Kuestro adds up the **calories, protein, carbs and fat**.
 - **Type your meal:** write it the way you'd say it, e.g. `2 eggs, 150g chicken breast, 1 cup rice, 1 tbsp olive oil` (Arabic names work too: `2 بيض, فول, عيش بلدي`), then tap **Calculate from my text**. Anything it can't find is listed so you can search it or add it yourself.
 - **Or search:** start typing a food and tap it. Your recent foods show up when the box is empty. Change the amount in grams or in pieces/cups/spoons for each item.
 - **Built-in foods:** about 110 common foods, including Egyptian ones (koshari, ful, ta'ameya, molokhia, baladi bread, mahshi, hawawshi, basbousa…). Values are approximate, per 100 g of cooked / ready-to-eat food.
@@ -166,7 +166,7 @@ Log what you ate and DayFlow adds up the **calories, protein, carbs and fat**.
 - Old meals you logged by hand still show up as before. Upload `foods.js` together with the other files.
 
 ## ⬆️ Progressive overload (Train)
-DayFlow now tells you **when to add weight**.
+Kuestro now tells you **when to add weight**.
 - When you start a workout, each exercise looks at last time. If you hit the **top of the rep range on every set** (for example 8 reps on all sets of `6-8`) at your working weight, you get **⬆️ Time to add weight** and the sets are pre-filled with the heavier weight (+2.5 kg / +5 lb, or +1 kg / +2.5 lb for light weights).
 - If you didn't hit every rep yet, it says **🎯 Stay at 60 kg until you hit 8 reps on every set**. Missing one set out of four still counts.
 - The **Weight** box in *Edit program* is your current working weight and goes up automatically when you lift more. You can edit it any time (for example to lower it after a bad week).
@@ -178,8 +178,11 @@ A **Water & drinks** card on Today: tap **Cup (250 ml)**, **Bottle (500 ml)**, *
 ## 🌙 Evening check-in (More → Evening check-in)
 A reminder before the day ends to log your progress. It is **on by default at 9:30 PM**; change the time or turn it off in *More → Evening check-in*.
 - **In the app:** after the reminder time, a **🌙 The day is almost over** card appears at the top of Today showing how much is done, whether your 🔥 streak needs more ticks to survive, your water so far and whether you've logged a meal. Tap **Got it** to hide it for the day. It doesn't appear if everything is already done.
-- **Notification:** tap **🔔 Allow notifications** once. DayFlow then sends one notification while it is open or in the background. The text is generic ("Time to log today's progress") so nothing private shows on a locked screen.
-- **When DayFlow is fully closed:** a website can't push notifications without a server, so use **📅 Add a daily alert to my calendar**. Open the downloaded file once and your phone's calendar adds a daily alert at your chosen time; tapping it opens DayFlow. If you change the time, download and open it again.
+- **Notification:** tap **🔔 Allow notifications** once. Kuestro then sends one notification while it is open or in the background. The text is generic ("Time to log today's progress") so nothing private shows on a locked screen.
+- **When Kuestro is fully closed:** a website can't push notifications without a server, so use **📅 Add a daily alert to my calendar**. Open the downloaded file once and your phone's calendar adds a daily alert at your chosen time; tapping it opens Kuestro. If you change the time, download and open it again.
 
 ## 🎨 New app icon
-A purple quest-scroll logo: a checklist scroll with a golden ribbon and a glowing star. `icon.svg` is the rounded version (browser tab and the app's lock screen), and `icon-192.png` / `icon-512.png` are full-square versions for the home screen (phones round the corners themselves). To see it on your phone after updating, remove DayFlow from your Home Screen and add it again; some phones cache the old icon.
+A purple quest-scroll logo: a checklist scroll with a golden ribbon and a glowing star. `icon.svg` is the rounded version (browser tab and the app's lock screen), and `icon-192.png` / `icon-512.png` are full-square versions for the home screen (phones round the corners themselves). To see it on your phone after updating, remove Kuestro from your Home Screen and add it again; some phones cache the old icon.
+
+## ℹ️ The name change (DayFlow → Kuestro)
+The app was renamed from DayFlow to Kuestro. A few internal names were kept on purpose so nothing you saved is lost: your data, theme and accent are still stored under the old `dayflow-…` keys, the calendar events keep their old IDs, and the Apple Health Shortcut works with either the old header `DAYFLOW` or the new `KUESTRO`. Existing backups still import.

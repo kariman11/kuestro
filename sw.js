@@ -1,5 +1,5 @@
 // Offline support: serves the app from cache, refreshes it in the background.
-const CACHE = 'dayflow-v21';
+const CACHE = 'kuestro-v22';
 const ASSETS = ['./', './index.html', './app.js', './theme.js', './foods.js', './manifest.webmanifest', './icon.svg', './icon-192.png', './icon-512.png'];
 
 self.addEventListener('install', e => {
@@ -18,7 +18,7 @@ self.addEventListener('fetch', e => {
   }));
 });
 
-// Tapping the evening reminder opens (or focuses) DayFlow.
+// Tapping the evening reminder opens (or focuses) Kuestro.
 self.addEventListener('notificationclick', e => {
   e.notification.close();
   e.waitUntil(self.clients.matchAll({ type: 'window', includeUncontrolled: true }).then(cs => {
