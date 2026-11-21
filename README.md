@@ -200,3 +200,14 @@ Every card with a title has a **▾** arrow and a **📌** pin, on every screen:
 - Tap **📌** to **pin a card open**. A pinned card stays expanded and is skipped by *Collapse all*. Unpin it to be able to fold it again.
 - **⇕ Collapse all** and **Expand all** appear at the top of any screen with three or more cards.
 - Cards that already fold by themselves (the "How to…" sections) and navigation cards (month/week arrows) are left as they are.
+
+## ↕️ Rearrange your cards
+On any screen with three or more cards, tap **↕ Arrange** (top right, next to *Collapse all*). Every card folds down to its title and shows **▲ ▼** buttons, so you can move the whole list around without scrolling. Tap **✓ Done** when you're finished. Your order is saved per screen. A card that appears later (for example Medications when you add a dose) slots in next to where it normally sits. **Reset order** puts the screen back to the default.
+The **📝 Logged** card was removed from Today (your logs are still in *More → Log*).
+
+## 🔁 Rotating training cycle (Train → Edit program → Training schedule)
+You don't have to train on fixed weekdays. Pick how you train:
+- **📅 Specific weekdays**: tick the days of the week (the original way).
+- **🔁 Rotating cycle**: train **N days**, then rest **M days**, and repeat, no matter which weekday it is (for example 5 on, 1 off). Set the numbers and the **first training day of the current cycle** (or tap **Today**). The screen shows "Today is training day 3 of 5" and a strip of your **next 14 days** (🏋️ training, 😴 rest) so you can check it.
+- On the Train screen, **↺ Today is day 1 of my cycle** restarts the cycle from today, and **😴 Skip today** pushes the whole cycle back a day when you miss a session, so the rhythm carries on from where you left off.
+- Today's "Training session" routine, the week strip, the training quests, the AI coach and the calendar export (next 60 days) all follow your cycle. The workouts (Push, Pull, Legs…) still rotate in order on your training days.

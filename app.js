@@ -49,7 +49,7 @@ function defaults(){
     money:{cur:'EGP',budget:0,tx:[],rules:{},wish:[]},
     water:{goal:2000,days:{},auto:{}},
     meds:[], cards:{seen:{},revealed:{}},
-    train:{days:[6,0,1,3,4],plan:defaultPlan(),idx:0,sessions:[],unit:'kg',active:null,seeded:false},
+    train:{days:[6,0,1,3,4],mode:'days',cyc:{on:5,off:1,start:''},plan:defaultPlan(),idx:0,sessions:[],unit:'kg',active:null,seeded:false},
     lang:{chosen:false,name:'Spanish',code:'es-ES',level:'A2 elementary',native:'English',goal:15,newPerDay:15,duoUrl:'https://www.duolingo.com/learn',reverse:false,ai:'claude',deck:[],reviews:{},seeded:false},
     strava:{clientId:'',clientSecret:'',access:'',refresh:'',expires:0,athlete:'',lastSync:0,after:0},
     ai:{claudeKey:'',claudeModel:'claude-sonnet-5-5',openaiKey:'',openaiModel:'gpt-5-mini',plan:''},
@@ -100,6 +100,7 @@ function showLock(){
 /* ---------- scheduling ---------- */
 function isDue(r,d){
   if(r.start&&key(d)<r.start)return false;
+  if(r.link==='train'&&S.train&&S.train.mode==='cycle')return isTrainDay(d);
   switch(r.freq){
     case 'daily':return true;
     case 'weekly':return (r.days||[]).includes(d.getDay());
@@ -132,6 +133,7 @@ function dayStats(d){
   return {total,done,pct:total?Math.round(done/total*100):0};
 }
 function freqText(r){
+  if(r.link==='train'&&S.train&&S.train.mode==='cycle')return 'Training cycle: '+trainSched();
   if(r.freq==='daily')return 'Every day';
   if(r.freq==='weekly')return (r.days||[]).length?[...r.days].sort().map(i=>DAYS[i]).join(', '):'No days picked';
   if(r.freq==='monthly')return `Monthly on day ${r.dom}`;
@@ -229,9 +231,7 @@ function renderToday(){
     h+=(groups.prayer||[]).map(rItem).join('')+`</div>`;
   }
   Object.keys(CATS).filter(c=>c!=='prayer'&&c!=='meals'&&groups[c]).forEach(c=>{h+=catCard(c)});
-  const dl=S.logs.filter(l=>l.date===k);
-  if(dl.length)h+=`<div class="card"><div class="sec-h"><span>📝 Logged</span></div>${dl.map(l=>`<div class="li"><span>${LOG[l.type].icon}</span><div class="grow">${esc(LOG[l.type].sum(l))}${l.src?` <span class="meta">· ${esc(l.src)}</span>`:''}</div></div>`).join('')}</div>`;
-  if(!due.length&&!S.settings.prayers&&!dl.length)h+=`<div class="empty">Nothing scheduled for this day.<br><br><button class="btn" data-act="newRoutine">+ Add a routine</button></div>`;
+  if(!due.length&&!S.settings.prayers)h+=`<div class="empty">Nothing scheduled for this day.<br><br><button class="btn" data-act="newRoutine">+ Add a routine</button></div>`;
   $('#todayList').innerHTML=h;
   if(S.settings.prayers)fillPrayers(d,isToday);
 }
@@ -568,7 +568,7 @@ document.addEventListener('click',e=>{if(!S)return;const c=s=>e.target.closest(s
 function coachPrompt(q){
   const since=key(addDays(new Date(),-27)),L=[];
   L.push('You are my personal fitness coach. Use my plan and my real training data below. Be specific and practical, keep it short, and flag anything risky (overtraining, sudden mileage jumps, too little recovery).','',`My question: ${q}`,'',`Today is ${new Date().toDateString()}.`,'','MY WORKOUT PLAN:',S.ai.plan||'(see my training program below)');
-  if(T_().plan.length){L.push('',`MY TRAINING PROGRAM (rotates on ${T_().days.map(i=>DAYS[i]).join(', ')}; next up: ${nextW()?.name}):`);
+  if(T_().plan.length){L.push('',`MY TRAINING PROGRAM (rotates on ${T_().mode==='cycle'?trainSched():T_().days.map(i=>DAYS[i]).join(', ')}; next up: ${nextW()?.name}):`);
     T_().plan.forEach((p,i)=>L.push(`Day ${i+1} ${p.name} (${p.focus||''}): `+p.ex.map(e=>`${e.name} ${e.sets}x${e.reps}${e.w?` @ ${e.w}${T_().unit}`:''}`).join('; ')));
     const rs=T_().sessions.filter(x=>x.date>=since);if(rs.length){L.push('','RECENT WORKOUT SESSIONS (weight x reps):');rs.forEach(x=>L.push(`${x.date} ${x.name} (${x.dur} min): `+x.ex.map(e=>`${e.name} `+e.sets.map(s=>`${s.w}x${s.r}`).join(', ')).join(' | ')))}}
   L.push('','MY SCHEDULED EXERCISE ROUTINES:');
@@ -766,7 +766,7 @@ function renderSettings(){
 }
 
 function render(){if(!S)return;({today:renderToday,routines:renderRoutines,log:renderLog,connect:renderConnect,settings:renderSettings,quests:renderQuests,learn:renderLearn,hero:renderHero,train:renderTrain,meds:renderMeds,todos:renderTodos,money:renderMoney,progress:renderProgress})[view]()}
-function show(v){view=v;$$('main>section').forEach(s=>s.classList.toggle('hidden',s.id!=='v-'+v));const tabOf={connect:'settings',routines:'settings',log:'settings',meds:'settings',money:'settings',hero:'quests',progress:'today'};$$('nav.tabs button').forEach(b=>b.classList.toggle('on',b.dataset.tab===(tabOf[v]||v)));if(v!=='train')TEDIT=false;if(v!=='log'){MB.back=false;MB.date=null}render();scrollTo(0,0)}
+function show(v){view=v;$$('main>section').forEach(s=>s.classList.toggle('hidden',s.id!=='v-'+v));const tabOf={connect:'settings',routines:'settings',log:'settings',meds:'settings',money:'settings',hero:'quests',progress:'today'};$$('nav.tabs button').forEach(b=>b.classList.toggle('on',b.dataset.tab===(tabOf[v]||v)));if(v!=='train')TEDIT=false;if(v!=='log'){MB.back=false;MB.date=null}$$('main>section').forEach(x=>x.classList.remove('cx-arr'));render();scrollTo(0,0)}
 function toast(m){const t=$('#toast');t.textContent=m;t.classList.add('on');clearTimeout(t._t);t._t=setTimeout(()=>t.classList.remove('on'),2600)}
 
 /* ---------- Appearance ---------- */
@@ -807,6 +807,8 @@ const stamp=()=>new Date().toISOString().replace(/[-:]/g,'').split('.')[0]+'Z';
 function routinesIcs(){
   const now=new Date(),BY=['SU','MO','TU','WE','TH','FR','SA'],L=icsHead('Kuestro routines'),st=stamp();
   S.routines.forEach(r=>{
+    if(r.link==='train'&&S.train.mode==='cycle'){for(let i=0;i<60;i++){const d=addDays(now,i);if(!isTrainDay(d))continue;const ds=key(d).replace(/-/g,'');
+      L.push('BEGIN:VEVENT',`UID:${r.id}-${ds}@dayflow`,`DTSTAMP:${st}`,`SUMMARY:${icsEsc(CATS[r.cat][0]+' '+r.name)}`,r.time?`DTSTART:${ds}T${r.time.replace(':','')}00`:`DTSTART;VALUE=DATE:${ds}`,...(r.time?['DURATION:PT20M']:[]),'END:VEVENT')}return}
     if(r.freq==='weekly'&&!r.days.length)return;
     let start=parse(r.start||key(now));if(key(start)<key(now))start=addDays(now,0);
     if(r.freq==='interval'){const n=dayDiff(parse(r.start),start),off=((n%r.every)+r.every)%r.every;if(off)start=addDays(start,r.every-off)}
@@ -1026,6 +1028,8 @@ document.addEventListener('click',async e=>{
     case 'revealCard':{const k=todayK(),i=todayCardIdx();S.cards.revealed[k]=i;if(S.cards.seen[i]==null)S.cards.seen[i]=k;S.claimed['card:'+k]=5;save();renderToday();const el=$('.cardslot .mcard');if(el)el.classList.add('flip');burst(e.clientX,e.clientY,'perfect');floatXP(e.clientX,e.clientY,'+5 XP');checkProgress();return}
     case 'skipW':if(confirm(`Skip ${nextW().name} and move to the next workout?`)){T_().idx++;save();renderTrain()}return;
     case 'editTrain':TEDIT=true;return renderTrain();
+    case 'cycRestart':cyc().start=todayK();save();return renderTrain();
+    case 'cycSkip':cyc().start=key(addDays(parse(cyc().start||todayK()),1));save();toast('Cycle shifted by a day');return renderTrain();
     case 'editDone':TEDIT=false;syncTrainRoutine();save();return renderTrain();
     case 'finishW':return finishWorkout();
     case 'cancelW':if(confirm('Cancel this workout? Sets you entered will be lost.')){T_().active=null;stopRest();save();renderTrain()}return;
@@ -1088,7 +1092,7 @@ document.addEventListener('change',e=>{
   if(t.id==='smsFile'){const f=t.files[0];if(f)f.text().then(doParse);return}
   if(t.id==='tutorAI'){S.lang.ai=t.value;return save()}
   if(t.id==='mFreq'){$('#mWeekly').classList.toggle('hidden',t.value!=='weekly');$('#mEvery').classList.toggle('hidden',t.value!=='interval');return}
-  if(t.dataset&&t.dataset.tday!=null){const i=+t.dataset.tday,d=T_().days;if(t.checked&&!d.includes(i))d.push(i);if(!t.checked)T_().days=d.filter(x=>x!==i);syncTrainRoutine();return save()}
+  if(t.dataset&&t.dataset.tday!=null){const i=+t.dataset.tday,d=T_().days;if(t.checked&&!d.includes(i))d.push(i);if(!t.checked)T_().days=d.filter(x=>x!==i);syncTrainRoutine();const pv=$('#tPrev');if(pv)pv.innerHTML=tPrevHTML();return save()}
   if(t.id==='tUnit'){T_().unit=t.value;return save()}
   if(t.name==='act'&&t.form&&t.form.id==='fLang')return syncDuo();
   if(t.id==='lockAfter'){S.settings.lockAfter=+t.value;return save()}
@@ -1126,6 +1130,18 @@ function cxApply(card){
   if(t){t.setAttribute('aria-expanded',String(!col));t.setAttribute('aria-label',col?'Expand':'Collapse')}
   if(p){p.classList.toggle('on',pin);p.setAttribute('aria-pressed',String(pin));p.title=pin?'Pinned open. Tap to unpin':'Pin open'}
 }
+function cxOrder(sec){   // put the cards in the order you saved; new cards slot in after the card that preceded them
+  const U=cxUI(),ord=(U.o&&U.o[sec.id])||[],cards=[...sec.querySelectorAll('[data-cx]')];
+  if(!ord.length||cards.length<2)return;
+  const byId=new Map(cards.map(c=>[c.dataset.cxid,c])),want=ord.filter(id=>byId.has(id));
+  cards.forEach((c,i)=>{const id=c.dataset.cxid;if(want.includes(id))return;let at=0;
+    for(let j=i-1;j>=0;j--){const p=want.indexOf(cards[j].dataset.cxid);if(p>=0){at=p+1;break}}
+    want.splice(at,0,id)});
+  const ordered=want.map(id=>byId.get(id));
+  if(ordered.every((c,i)=>c===cards[i]))return;     // already in order: touch nothing
+  const ph=cards.map(c=>{const m=document.createComment('');c.before(m);return m});
+  ph.forEach((m,i)=>m.replaceWith(ordered[i]));
+}
 function decorateCards(){
   if(!S)return;
   document.querySelectorAll('main > section:not(.hidden)').forEach(sec=>{
@@ -1138,18 +1154,26 @@ function decorateCards(){
       c.dataset.cx='1';c.dataset.cxid=id;
       const tg=document.createElement('button');tg.type='button';tg.className='cxt';tg.dataset.cxToggle='1';tg.textContent='▾';
       const pn=document.createElement('button');pn.type='button';pn.className='cxp';pn.dataset.cxPin='1';pn.textContent='📌';
-      te.prepend(tg);te.append(pn);cxApply(c);
+      const mv=document.createElement('span');mv.className='cxm';mv.innerHTML='<button type="button" data-cx-move="-1" aria-label="Move up">▲</button><button type="button" data-cx-move="1" aria-label="Move down">▼</button>';
+      te.prepend(tg);te.append(pn,mv);cxApply(c);
     });
     const cards=[...sec.querySelectorAll('[data-cx]')];
     if(cards.length>=3){const par=cards[0].parentElement;
       if(![...par.children].some(x=>x.classList&&x.classList.contains('cxbar'))){
         const bar=document.createElement('div');bar.className='cxbar';
-        bar.innerHTML='<button type="button" data-cx-all="c">⇕ Collapse all</button><button type="button" data-cx-all="e">Expand all</button>';par.insertBefore(bar,cards[0])}}
+        const ar=sec.classList.contains('cx-arr');
+        bar.innerHTML=`<span class="cxhint">Use ▲ ▼ to move cards</span><button type="button" data-cx-all="c">⇕ Collapse all</button><button type="button" data-cx-all="e">Expand all</button><button type="button" data-cx-arr="1">${ar?'✓ Done':'↕ Arrange'}</button><button type="button" class="cxreset" data-cx-reset="1">Reset order</button>`;par.insertBefore(bar,cards[0])}}
+    cxOrder(sec);
   });
 }
 document.addEventListener('click',e=>{if(!S)return;const c=s=>e.target.closest(s);let el;
   if(el=c('[data-cx-toggle]')){e.stopPropagation();const card=el.closest('[data-cx]'),U=cxUI(),id=card.dataset.cxid;if(U.c[id])delete U.c[id];else U.c[id]=1;save();return cxApply(card)}
   if(el=c('[data-cx-pin]')){e.stopPropagation();const card=el.closest('[data-cx]'),U=cxUI(),id=card.dataset.cxid;if(U.p[id]){delete U.p[id];toast('Unpinned')}else{U.p[id]=1;delete U.c[id];toast('Pinned: this card stays open')}save();return cxApply(card)}
+  if(el=c('[data-cx-arr]')){e.stopPropagation();const sec=el.closest('section'),on=sec.classList.toggle('cx-arr');el.textContent=on?'✓ Done':'↕ Arrange';return}
+  if(el=c('[data-cx-reset]')){e.stopPropagation();const U=cxUI(),sec=el.closest('section');if(U.o)delete U.o[sec.id];save();return render()}
+  if(el=c('[data-cx-move]')){e.stopPropagation();const card=el.closest('[data-cx]'),sec=card.closest('section'),cards=[...sec.querySelectorAll('[data-cx]')],i=cards.indexOf(card),j=i+(+el.dataset.cxMove);
+    if(j<0||j>=cards.length)return;const ids=cards.map(x=>x.dataset.cxid);[ids[i],ids[j]]=[ids[j],ids[i]];
+    const U=cxUI();(U.o=U.o||{})[sec.id]=ids;save();cxOrder(sec);card.scrollIntoView({block:'nearest',behavior:'smooth'});return}
   if(el=c('[data-cx-all]')){e.stopPropagation();const U=cxUI(),sec=el.closest('section'),collapse=el.dataset.cxAll==='c';
     sec.querySelectorAll('[data-cx]').forEach(card=>{const id=card.dataset.cxid;if(collapse){if(!U.p[id])U.c[id]=1}else delete U.c[id];cxApply(card)});save()}
 },true);
@@ -1634,7 +1658,21 @@ function defaultPlan(){return [
   {id:uid(),name:'Lower + Core',focus:'Glutes · Hamstrings · Abs',ex:[EX('Deadlift',3,'5',180),EX('Bulgarian split squat',3,'8-10/leg'),EX('Hip thrust',3,'8-12'),EX('Plank',3,'45 s',60),EX('Hanging knee raise',3,'12-15',60)]},
 ]}
 const T_=()=>S.train;
-const isTrainDay=d=>T_().days.includes(d.getDay());
+const cyc=()=>{const T=T_();T.cyc=T.cyc||{on:5,off:1,start:''};return T.cyc};
+const cycOn=()=>Math.max(1,Math.round(+cyc().on||1));
+const cycLen=()=>cycOn()+Math.max(0,Math.round(+cyc().off||0));
+const cycPos=d=>{const n=dayDiff(parse(cyc().start||todayK()),d),L=cycLen();return ((n%L)+L)%L};   // 0 = first training day of the cycle
+const isTrainDay=d=>T_().mode==='cycle'?cycPos(d)<cycOn():T_().days.includes(d.getDay());
+const trainSched=()=>T_().mode==='cycle'?`${cycOn()} training days, then ${cycLen()-cycOn()} rest day${cycLen()-cycOn()===1?'':'s'}, repeating`:`${T_().days.length} days/week`;
+const cycNowText=()=>{const p=cycPos(new Date()),on=cycOn();return p<on?`Today is training day ${p+1} of ${on}.`:`Today is a rest day (${p-on+1} of ${cycLen()-on}).`};
+const tPrevHTML=()=>{let h='';for(let i=0;i<14;i++){const d=addDays(new Date(),i),on=isTrainDay(d);h+=`<div class="${on?'on':''} ${i===0?'today':''}"><span>${DAYS[d.getDay()][0]}</span><b>${d.getDate()}</b><i>${on?'🏋️':'😴'}</i></div>`}return h};
+function cycleEditHTML(){const c=cyc();
+  return `<div class="row mt"><label class="mini">Train for (days)<input type="number" inputmode="numeric" min="1" max="14" data-cyc="on" value="${cycOn()}"></label><label class="mini">then rest (days)<input type="number" inputmode="numeric" min="0" max="14" data-cyc="off" value="${cycLen()-cycOn()}"></label></div>
+    <label class="f">First training day of the current cycle</label><div class="row"><input type="date" data-cyc="start" value="${c.start||todayK()}"><button type="button" class="btn ghost" style="flex:0 0 auto" data-act="cycRestart">Today</button></div>
+    <p class="meta mt" id="cycNow">${cycNowText()}</p>`}
+function cycStatusHTML(){const p=cycPos(new Date());
+  return `<p class="meta mt"><b>${cycNowText()}</b> Cycle: ${cycOn()} on, ${cycLen()-cycOn()} off.</p>
+    <div class="row" style="flex-wrap:wrap"><button class="linkbtn" data-act="cycRestart">↺ Today is day 1 of my cycle</button>${p<cycOn()?'<button class="linkbtn" data-act="cycSkip">😴 Skip today (shift my cycle a day)</button>':''}</div>`}
 const nextW=()=>{const p=T_().plan;return p.length?p[((T_().idx%p.length)+p.length)%p.length]:null};
 const sessionsOn=k=>T_().sessions.filter(x=>x.date===k);
 function syncTrainRoutine(){const r=S.routines.find(r=>r.link==='train');if(r){r.days=[...T_().days];r.freq='weekly'}}
@@ -1733,9 +1771,9 @@ function renderTrain(){
   if(doneToday)h+=`<div class="card ok"><h2>✅ Today’s training is done</h2><p class="meta">Great work. Next up: <b>${nw?esc(nw.name):''}</b> on your next training day.</p></div>`;
   else if(nw)h+=`<div class="card hero tnext"><div class="avatar">${trainToday?'🔥':'😴'}</div><div class="grow"><div class="meta">${trainToday?'Today’s workout':'Rest day. Next workout'}</div><div class="qt" style="font-size:20px">${esc(nw.name)}</div><div class="meta">${esc(nw.focus||'')} · ${nw.ex.length} exercises${nw.ex.filter(x=>progFor(x)?.type==='up').length?` · ⬆️ ${nw.ex.filter(x=>progFor(x)?.type==='up').length} ready for more weight`:''}</div></div></div>
     <div class="row" style="margin-bottom:12px"><button class="btn" data-startw="${nw.id}">${trainToday?'▶ Start workout':'▶ Train anyway'}</button><button class="btn ghost" style="flex:0 0 auto" data-act="skipW">Skip ⏭</button></div>`;
-  h+=`<div class="card"><div class="sec-h"><span>🔁 Rotation · ${T.days.length} days/week</span><button class="pill" data-act="editTrain">✎ Edit program</button></div>
+  h+=`<div class="card"><div class="sec-h"><span>🔁 Rotation · ${T.mode==='cycle'?cycOn()+' on · '+(cycLen()-cycOn())+' off':T.days.length+' days/week'}</span><button class="pill" data-act="editTrain">✎ Edit program</button></div>
     ${T.plan.map((p,i)=>`<div class="li ${nw&&p.id===nw.id?'cur':''}"><span class="rnum">${i+1}</span><div class="grow"><b>${esc(p.name)}</b>${nw&&p.id===nw.id?' <span class="pill">next</span>':''}<div class="meta">${esc(p.focus||'')} · ${p.ex.map(e=>esc(e.name)).slice(0,3).join(', ')}${p.ex.length>3?'…':''}</div></div><button class="ib" data-startw="${p.id}" aria-label="Start ${esc(p.name)}">▶</button></div>`).join('')}
-    <p class="meta mt">Your workouts go in order on your training days. A missed day doesn’t skip a workout; the rotation simply continues next time.</p></div>`;
+    <p class="meta mt">Your workouts go in order on your training days. A missed day doesn’t skip a workout; the rotation simply continues next time.</p>${T.mode==='cycle'?cycStatusHTML():''}</div>`;
   const recent=[...T.sessions].reverse().slice(0,8);
   h+=`<div class="card"><h2>📈 Recent sessions</h2>${recent.length?recent.map(s=>`<div class="li"><span>🏋️</span><div class="grow"><b>${esc(s.name)}</b>${s.prs?` <span class="pill">🏆 ${s.prs} PR</span>`:''}<div class="meta">${parse(s.date).toLocaleDateString(undefined,{weekday:'short',day:'numeric',month:'short'})} · ${s.dur} min · ${s.ex.reduce((t,e)=>t+e.sets.length,0)} sets${s.vol?` · ${s.vol.toLocaleString()} ${T.unit}`:''}</div></div></div>`).join(''):'<div class="empty">Your finished workouts will show here.</div>'}</div>`;
   const prs={};T.sessions.forEach(s=>s.ex.forEach(e=>e.sets.forEach(x=>{if(+x.w>0&&(!prs[e.name]||+x.w>prs[e.name].w))prs[e.name]={w:+x.w,r:x.r,date:s.date}})));
@@ -1745,7 +1783,7 @@ function renderTrain(){
 }
 function renderTrainEdit(){
   const T=T_();
-  let h=`<div class="card"><h2>Training days</h2><p class="meta">Pick your days. The workouts below rotate across them. <b>Weight</b> is your current working weight: it goes up by itself when you lift more, and Kuestro tells you when it is time to add weight.</p><div class="chips">${[6,0,1,2,3,4,5].map(i=>`<label><input type="checkbox" data-tday="${i}" ${T.days.includes(i)?'checked':''}><span>${DAYS[i]}</span></label>`).join('')}</div>
+  let h=`<div class="card"><h2>Training schedule</h2><p class="meta">How do you train? <b>Weight</b> is your current working weight: it goes up by itself when you lift more, and Kuestro tells you when it is time to add weight.</p><div class="chips">${[['days','📅 Specific weekdays'],['cycle','🔁 Rotating cycle']].map(([v,l])=>`<label><input type="radio" ${(T.mode||'days')===v?'checked':''}><span data-tmode="${v}">${l}</span></label>`).join('')}</div>${T.mode==='cycle'?cycleEditHTML():`<p class="meta mt">Pick your days. The workouts below rotate across them.</p><div class="chips">${[6,0,1,2,3,4,5].map(i=>`<label><input type="checkbox" data-tday="${i}" ${T.days.includes(i)?'checked':''}><span>${DAYS[i]}</span></label>`).join('')}</div>`}<div class="meta mt">Your next 14 days:</div><div class="tprev" id="tPrev">${tPrevHTML()}</div>
     <div class="row mt"><div><label class="f">Units</label><select id="tUnit"><option ${T.unit==='kg'?'selected':''}>kg</option><option ${T.unit==='lb'?'selected':''}>lb</option></select></div></div></div>`;
   T.plan.forEach((p,di)=>{
     h+=`<div class="card"><div class="row"><span class="rnum" style="flex:0 0 auto">${di+1}</span><input data-pe="${di}::name" value="${esc(p.name)}" placeholder="Workout name"></div>
@@ -1757,6 +1795,18 @@ function renderTrainEdit(){
   h+=`<button class="btn ghost full" data-act="dayAdd">+ Add workout day</button><button class="btn full mt" data-act="editDone">✓ Done</button><button class="linkbtn" style="display:block;margin:12px auto" data-act="resetPlan">Reset to the default 5-day program</button>`;
   $('#trainBody').innerHTML=h;
 }
+
+document.addEventListener('click',e=>{if(!S)return;const el=e.target.closest('[data-tmode]');if(!el)return;
+  e.preventDefault();const T=T_();T.mode=el.dataset.tmode;if(T.mode==='cycle'&&!cyc().start)cyc().start=todayK();
+  syncTrainRoutine();save();renderTrain();
+});
+document.addEventListener('input',e=>{const t=e.target;if(!S||!t||!t.dataset||!t.dataset.cyc)return;
+  const c=cyc(),f=t.dataset.cyc;
+  if(f==='on')c.on=Math.min(14,Math.max(1,Math.round(+t.value)||1));
+  else if(f==='off')c.off=Math.min(14,Math.max(0,Math.round(+t.value)||0));
+  else if(/^\d{4}-\d{2}-\d{2}$/.test(t.value))c.start=t.value;
+  save();const pv=$('#tPrev'),nw=$('#cycNow');if(pv)pv.innerHTML=tPrevHTML();if(nw)nw.textContent=cycNowText();
+});
 function tickElapsed(){const a=S&&T_().active,el=$('#elapsed');if(a&&el){const s=Math.floor((Date.now()-a.start)/1000);el.textContent=`${Math.floor(s/60)}:${pad(s%60)}`}}
 setInterval(()=>{if(S&&view==='train')tickElapsed()},1000);
 
@@ -2238,7 +2288,7 @@ const WEEKLY=[
   {id:'lang90',lang:1,icon:'🌍',t:'Practice your language 90 min',xp:150,ok:langOn,p:ds=>[Math.min(90,ds.reduce((a,d)=>a+langMinOn(key(d)),0)),90]},
   {id:'words25',lang:1,icon:'📇',t:'Add 25 new words',xp:120,ok:langOn,p:ds=>{const ks=new Set(ds.map(key));return [Math.min(25,S.lang.deck.filter(c=>ks.has(c.added)).length),25]}},
   {id:'rev100',lang:1,icon:'🧠',t:'Review 100 flashcards',xp:120,ok:()=>S.lang.deck.length>0,p:ds=>[Math.min(100,ds.reduce((a,d)=>a+(S.lang.reviews[key(d)]||0),0)),100]},
-  {id:'train5',icon:'🏋️',t:'Finish every training day this week',xp:200,ok:()=>T_().plan.length>0&&T_().days.length>0,p:ds=>{const wk=new Set(ds.map(key)),n=new Set(T_().sessions.filter(x=>wk.has(x.date)).map(x=>x.date)).size;return [Math.min(n,T_().days.length),T_().days.length]}},
+  {id:'train5',icon:'🏋️',t:'Finish every training day this week',xp:200,ok:()=>T_().plan.length>0&&(T_().mode==='cycle'||T_().days.length>0),p:ds=>{const wk=new Set(ds.map(key)),n=new Set(T_().sessions.filter(x=>wk.has(x.date)).map(x=>x.date)).size,tgt=T_().mode==='cycle'?Math.max(1,ds.filter(d=>isTrainDay(d)).length):T_().days.length;return [Math.min(n,tgt),tgt]}},
   {id:'meds7',icon:'💊',t:'Every dose, every day this week',xp:150,ok:()=>(S.meds||[]).some(m=>m.active!==false),p:ds=>{const days=ds.filter(d=>dosesOn(d).length);return [days.filter(d=>dosesOn(d).every(x=>isDone(x.id,d))).length,days.length]}},
   {id:'todo15',icon:'✅',t:'Complete 15 to-dos',xp:120,ok:()=>S.todos.items.length>0,p:ds=>{const ks=new Set(ds.map(key));return [Math.min(15,S.todos.items.filter(i=>i.done&&ks.has(i.doneAt)).length),15]}},
   {id:'meal14',icon:'🍽️',t:'Log 14 meals',xp:100,ok:()=>true,p:ds=>[Math.min(14,sumLogs(ds,'meal')),14]},
