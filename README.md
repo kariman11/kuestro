@@ -151,4 +151,35 @@ Tap the progress bar on **Today**, the **📈 Weekly & monthly progress** button
 - **Routines:** each one's done vs due, with weak spots marked *needs attention*.
 
 ## 🍡 Cute character style (default)
-The character is now drawn in a soft **kawaii style**: rounded bangs, big glossy eyes, blush, a pastel background and rounded accessories (bow, cat ears, flower, curly ahoge). The Quests card is a soft pastel **Hero card** instead of the dark STATUS window. Existing characters switch to the cute style once; you can go back to **⚔️ Hunter (dark anime)** any time in the character editor under *Art style* (the Hunter-only options like glowing eyes and night city appear only then). Hair names changed: *Spiky hero → Tufty*, *Wolf cut → Fluffy*. Bump `dayflow-v16` in `sw.js` when you upload so phones refresh.
+The character is now drawn in a soft **kawaii style**: rounded bangs, big glossy eyes, blush, a pastel background and rounded accessories (bow, cat ears, flower, curly ahoge). The Quests card is a soft pastel **Hero card** instead of the dark STATUS window. New characters start in the cute style. Existing characters keep their current style; switch any time in the character editor under *Art style* (**🍡 Cute** or **⚔️ Hunter**; the Hunter-only options like glowing eyes and night city appear only for Hunter). The Hunter style also got curtain bangs, thinner lashes and a rounder face. Hair names changed: *Spiky hero → Tufty*, *Wolf cut → Fluffy*. Bump `dayflow-v17` in `sw.js` when you upload so phones refresh.
+
+## 🎯 Planned weight per exercise
+In **Train → Edit program**, each exercise has a **Weight** box (next to Sets, Reps and Rest). When you start that workout, every set is pre-filled with that weight and the card shows **🎯 62.5 kg**. Leave it empty to keep the old behavior (last time's weights are filled in). You can still change the weight on any set during the workout. The AI coach also sees the planned weights.
+
+## 🥗 Meal calculator (Log → Meal)
+Log what you ate and DayFlow adds up the **calories, protein, carbs and fat**.
+- **Type your meal:** write it the way you'd say it, e.g. `2 eggs, 150g chicken breast, 1 cup rice, 1 tbsp olive oil` (Arabic names work too: `2 بيض, فول, عيش بلدي`), then tap **Calculate from my text**. Anything it can't find is listed so you can search it or add it yourself.
+- **Or search:** start typing a food and tap it. Your recent foods show up when the box is empty. Change the amount in grams or in pieces/cups/spoons for each item.
+- **Built-in foods:** about 110 common foods, including Egyptian ones (koshari, ful, ta'ameya, molokhia, baladi bread, mahshi, hawawshi, basbousa…). Values are approximate, per 100 g of cooked / ready-to-eat food.
+- **Your own foods:** *＋ Add my own food* lets you copy the numbers from a package label. It is saved so you can find it by name next time (tap × on it to delete).
+- **Daily summary & goals:** the top of the form shows today's calories, protein, carbs and fat. Tap 🎯 *Goals* to set a daily calorie and protein target and see progress bars. You can pick another date to see that day.
+- Old meals you logged by hand still show up as before. Upload `foods.js` together with the other files.
+
+## ⬆️ Progressive overload (Train)
+DayFlow now tells you **when to add weight**.
+- When you start a workout, each exercise looks at last time. If you hit the **top of the rep range on every set** (for example 8 reps on all sets of `6-8`) at your working weight, you get **⬆️ Time to add weight** and the sets are pre-filled with the heavier weight (+2.5 kg / +5 lb, or +1 kg / +2.5 lb for light weights).
+- If you didn't hit every rep yet, it says **🎯 Stay at 60 kg until you hit 8 reps on every set**. Missing one set out of four still counts.
+- The **Weight** box in *Edit program* is your current working weight and goes up automatically when you lift more. You can edit it any time (for example to lower it after a bad week).
+- The next-workout card shows **⬆️ 2 ready for more weight**. Exercises with reps like "max", and bodyweight exercises, are skipped.
+
+## 💧 Water & drinks (Today)
+A **Water & drinks** card on Today: tap **Cup (250 ml)**, **Bottle (500 ml)**, **Coffee** or **Tea** every time you drink, or **More** for milk, juice, soda or any amount in ml. Everything counts toward your daily goal (pick **1.5, 2, 2.5, 3, 3.5 or 4 L** at the top right). See the time of every drink, delete a mistake, and see a breakdown (💧 1.75 L · ☕ 0.2 L). Reaching the goal ticks your **Drink water** routine automatically (and unticks it if you remove drinks or raise the goal). You can also open an earlier day to fill in drinks you forgot.
+
+## 🌙 Evening check-in (More → Evening check-in)
+A reminder before the day ends to log your progress. It is **on by default at 9:30 PM**; change the time or turn it off in *More → Evening check-in*.
+- **In the app:** after the reminder time, a **🌙 The day is almost over** card appears at the top of Today showing how much is done, whether your 🔥 streak needs more ticks to survive, your water so far and whether you've logged a meal. Tap **Got it** to hide it for the day. It doesn't appear if everything is already done.
+- **Notification:** tap **🔔 Allow notifications** once. DayFlow then sends one notification while it is open or in the background. The text is generic ("Time to log today's progress") so nothing private shows on a locked screen.
+- **When DayFlow is fully closed:** a website can't push notifications without a server, so use **📅 Add a daily alert to my calendar**. Open the downloaded file once and your phone's calendar adds a daily alert at your chosen time; tapping it opens DayFlow. If you change the time, download and open it again.
+
+## 🎨 New app icon
+A purple quest-scroll logo: a checklist scroll with a golden ribbon and a glowing star. `icon.svg` is the rounded version (browser tab and the app's lock screen), and `icon-192.png` / `icon-512.png` are full-square versions for the home screen (phones round the corners themselves). To see it on your phone after updating, remove DayFlow from your Home Screen and add it again; some phones cache the old icon.

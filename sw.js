@@ -1,6 +1,6 @@
 // Offline support: serves the app from cache, refreshes it in the background.
-const CACHE = 'dayflow-v16';
-const ASSETS = ['./', './index.html', './app.js', './theme.js', './manifest.webmanifest', './icon.svg', './icon-192.png', './icon-512.png'];
+const CACHE = 'dayflow-v21';
+const ASSETS = ['./', './index.html', './app.js', './theme.js', './foods.js', './manifest.webmanifest', './icon.svg', './icon-192.png', './icon-512.png'];
 
 self.addEventListener('install', e => {
   e.waitUntil(caches.open(CACHE).then(c => c.addAll(ASSETS)).then(() => self.skipWaiting()));
@@ -15,5 +15,14 @@ self.addEventListener('fetch', e => {
     const cached = await cache.match(e.request, { ignoreSearch: true });
     const fresh = fetch(e.request).then(res => { if (res.ok) cache.put(e.request, res.clone()); return res; }).catch(() => cached);
     return cached || fresh;
+  }));
+});
+
+// Tapping the evening reminder opens (or focuses) DayFlow.
+self.addEventListener('notificationclick', e => {
+  e.notification.close();
+  e.waitUntil(self.clients.matchAll({ type: 'window', includeUncontrolled: true }).then(cs => {
+    for (const c of cs) if ('focus' in c) return c.focus();
+    return self.clients.openWindow('./');
   }));
 });

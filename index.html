@@ -210,7 +210,24 @@ nav.tabs button{font-size:10.5px}
 .exrow .row{align-items:flex-end;margin-top:6px;flex-wrap:wrap}
 label.mini{font-size:11px;color:var(--mute);display:flex;flex-direction:column;gap:3px;flex:1;min-width:60px}
 label.mini input,label.mini select{padding:8px 6px}
-.exbtns{display:flex;gap:4px;flex:0 0 auto}.exbtns .ib{min-width:34px;height:36px}
+.mday{background:var(--acc2);border-radius:14px;padding:10px 12px;margin:6px 0 4px}
+.sugrow{display:flex;gap:6px;align-items:center;margin-top:6px}
+.sug{flex:1;display:flex;justify-content:space-between;gap:8px;align-items:center;text-align:left;border:1px solid var(--line);background:var(--bg);color:inherit;font:inherit;padding:9px 12px;border-radius:10px;cursor:pointer}
+.sug small{color:var(--mute);white-space:nowrap;font-size:12px}
+.mrow{display:flex;gap:6px;align-items:center;padding:8px 0;border-top:1px solid var(--line)}
+.mrow .mq{width:76px;flex:0 0 76px;padding:8px 6px;text-align:center}.mrow .mu{width:74px;flex:0 0 74px;padding:8px 4px}
+.mtot{display:grid;grid-template-columns:repeat(4,1fr);gap:6px;margin:12px 0 6px}.mtot div{background:var(--bg);border-radius:12px;padding:8px 4px;text-align:center}.mtot b{display:block;font-size:19px}.mtot span{font-size:11px;color:var(--mute)}
+.msplit{display:flex;height:8px;border-radius:99px;overflow:hidden;margin:6px 0 4px}.msplit i{display:block;height:100%}
+.prog{margin:6px 0 2px;padding:8px 10px;border-radius:10px;background:var(--acc2);font-size:13px;line-height:1.35}.prog span{display:block;color:var(--mute);font-size:12px;margin-top:2px}
+.prog.up{background:color-mix(in srgb,#f5b942 24%,transparent);border-left:3px solid #f5b942}
+.wtot{display:flex;align-items:baseline;gap:6px;flex-wrap:wrap;margin:2px 0}.wtot b{font-size:26px}.wtot .wleft{margin-left:auto}
+.wgoal{width:auto;padding:5px 8px;font-size:13px;border-radius:99px}
+.wq{display:grid;grid-template-columns:repeat(5,1fr);gap:6px;margin-top:10px}
+.wbtn{display:flex;flex-direction:column;align-items:center;gap:1px;border:1px solid var(--line);background:var(--bg);color:inherit;border-radius:12px;padding:8px 2px;font:inherit;cursor:pointer}.wbtn span{font-size:20px}.wbtn b{font-size:12px}.wbtn small{font-size:10px;color:var(--mute)}.wbtn:active{background:var(--acc2)}
+.wmore select{flex:1.4}.wmore input{flex:1}
+.wlist{margin-top:8px}.wrow{display:flex;align-items:center;gap:8px;padding:5px 0;border-top:1px solid var(--line);font-size:14px}.wrow span:first-child{flex:1}
+.nudge{border-color:#f5b942;background:color-mix(in srgb,#f5b942 14%,var(--card))}.nl{font-size:14px;padding:2px 0}
+.exbtns{display:flex;gap:4px;flex:0 0 auto;margin-left:auto}.exbtns .ib{min-width:34px;height:36px}
 .restbar{position:fixed;left:12px;right:12px;bottom:calc(68px + env(safe-area-inset-bottom));z-index:40;max-width:616px;margin:0 auto;background:var(--ink);color:var(--bg);border-radius:16px;padding:10px 14px;display:flex;align-items:center;gap:8px;box-shadow:0 8px 24px #0004}
 .restbar span{flex:1}.restbar b{font-size:20px;margin-left:6px;font-variant-numeric:tabular-nums}
 .restbar.hidden{display:none}
@@ -469,6 +486,7 @@ label.mini input,label.mini select{padding:8px 6px}
       <button data-act="goConnect"><b>🔗</b>Connections<small>Strava · Health · AI</small></button>
     </div>
     <div class="card" id="secBox"></div>
+    <div class="card" id="nudgeBox"></div>
     <form class="card" id="setForm">
       <h2>🕌 Prayer times</h2>
       <label style="display:flex;gap:8px;align-items:center"><input type="checkbox" name="prayers"> Show the 5 daily prayers on Today</label>
@@ -547,6 +565,7 @@ label.mini input,label.mini select{padding:8px 6px}
 <dialog id="mDlg"><form id="mForm" method="dialog"></form></dialog>
 <div id="restBar" class="restbar hidden"></div>
 <div class="toast" id="toast" role="status"></div>
+<script src="foods.js"></script>
 <script src="app.js"></script>
 </body>
 </html>
