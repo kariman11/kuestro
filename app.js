@@ -1759,18 +1759,22 @@ const T_=()=>S.train;
 const cyc=()=>{const T=T_();T.cyc=T.cyc||{on:5,off:1,start:''};return T.cyc};
 const cycOn=()=>Math.max(1,Math.round(+cyc().on||1));
 const cycLen=()=>cycOn()+Math.max(0,Math.round(+cyc().off||0));
-const cycPos=d=>{const n=dayDiff(parse(cyc().start||todayK()),d),L=cycLen();return ((n%L)+L)%L};   // 0 = first training day of the cycle
+// 0 = first training day of the cycle. Each rest day you add pushes the rest of the cycle back a day.
+const cycPos=d=>{const st=cyc().start||todayK(),k=key(d),L=cycLen();let n=dayDiff(parse(st),d);
+  if(n>0)for(const x in restSwaps())if(x>=st&&x<k)n--;
+  return ((n%L)+L)%L};
 const restSwaps=()=>{const T=T_();T.rest=T.rest||{};return T.rest};   // { 'YYYY-MM-DD': 1 }: planned training days you turned into rest days
 const isPlannedTrainDay=d=>T_().mode==='cycle'?cycPos(d)<cycOn():T_().days.includes(d.getDay());
 const isRestSwap=d=>!!restSwaps()[key(d)];
-const isTrainDay=d=>isPlannedTrainDay(d)&&!isRestSwap(d);   // a swap never moves the cycle; the workouts just continue on the next training day
+const isTrainDay=d=>isPlannedTrainDay(d)&&!isRestSwap(d);   // cycle mode: a swap inserts a rest day and the cycle resumes the next day; weekday mode: only that date changes
 function toggleRestDay(k){const R=restSwaps();
   if(R[k]){delete R[k];save();return toast('Back to a training day')}
   if(!isPlannedTrainDay(parse(k)))return toast('That is already a rest day');
-  R[k]=1;const old=key(addDays(new Date(),-60));Object.keys(R).forEach(x=>{if(x<old)delete R[x]});   // tidy old swaps
-  save();toast('😴 Rest day. Your cycle stays the same')}
+  R[k]=1;const old=key(addDays(new Date(),-60)),c=cyc();
+  Object.keys(R).forEach(x=>{if(x>=old)return;delete R[x];if(c.start&&x>=c.start)c.start=key(addDays(parse(c.start),1))});   // tidy old swaps, folding them into the cycle start so nothing moves
+  save();toast(T_().mode==='cycle'?'😴 Rest day added. Your cycle continues the next day':'😴 Rest day. Your next workout moves to the next training day')}
 const trainSched=()=>T_().mode==='cycle'?`${cycOn()} training days, then ${cycLen()-cycOn()} rest day${cycLen()-cycOn()===1?'':'s'}, repeating`:`${T_().days.length} days/week`;
-const cycNowText=()=>{const p=cycPos(new Date()),on=cycOn();return p<on?(isRestSwap(new Date())?`Today is training day ${p+1} of ${on}, swapped to a rest day.`:`Today is training day ${p+1} of ${on}.`):`Today is a rest day (${p-on+1} of ${cycLen()-on}).`};
+const cycNowText=()=>{const p=cycPos(new Date()),on=cycOn();return p<on?(isRestSwap(new Date())?`Today is an added rest day. Tomorrow is training day ${p+1} of ${on}.`:`Today is training day ${p+1} of ${on}.`):`Today is a rest day (${p-on+1} of ${cycLen()-on}).`};
 const tPrevHTML=()=>{let h='';for(let i=0;i<14;i++){const d=addDays(new Date(),i),on=isTrainDay(d),sw=isRestSwap(d);h+=`<div class="${on?'on':''} ${sw?'swap':''} ${i===0?'today':''}" ${on||sw?`data-restday="${key(d)}" role="button" title="${sw?'Make it a training day again':'Make it a rest day'}"`:''}><span>${DAYS[d.getDay()][0]}</span><b>${d.getDate()}</b><i>${on?'🏋️':'😴'}</i></div>`}return h};
 function cycleEditHTML(){const c=cyc();
   return `<div class="row mt"><label class="mini">Train for (days)<input type="number" inputmode="numeric" min="1" max="14" data-cyc="on" value="${cycOn()}"></label><label class="mini">then rest (days)<input type="number" inputmode="numeric" min="0" max="14" data-cyc="off" value="${cycLen()-cycOn()}"></label></div>
@@ -1778,7 +1782,7 @@ function cycleEditHTML(){const c=cyc();
     <p class="meta mt" id="cycNow">${cycNowText()}</p>`}
 function cycStatusHTML(){const p=cycPos(new Date());
   return `<p class="meta mt"><b>${cycNowText()}</b> Cycle: ${cycOn()} on, ${cycLen()-cycOn()} off.</p>
-    <div class="row" style="flex-wrap:wrap"><button class="linkbtn" data-act="cycRestart">↺ Today is day 1 of my cycle</button>${p<cycOn()&&!isRestSwap(new Date())?'<button class="linkbtn" data-act="cycSkip">⏩ Skip today (shift my cycle a day)</button>':''}</div>`}
+    <div class="row" style="flex-wrap:wrap"><button class="linkbtn" data-act="cycRestart">↺ Today is day 1 of my cycle</button></div>`}
 const nextW=()=>{const p=T_().plan;return p.length?p[((T_().idx%p.length)+p.length)%p.length]:null};
 const sessionsOn=k=>T_().sessions.filter(x=>x.date===k);
 function syncTrainRoutine(){const r=S.routines.find(r=>r.link==='train');if(r){r.days=[...T_().days];r.freq='weekly'}}
@@ -1899,11 +1903,11 @@ function renderTrain(){
   }
   const nw=nextW(),today=new Date(),trainToday=isTrainDay(today),doneToday=sessionsOn(todayK()).length>0;
   const wk=weekPlanPreview();
-  h+=`<div class="week tweek">${wk.map(x=>`<div class="${x.k===todayK()?'sel':''} ${x.w?'on':''} ${x.sw?'swap':''}" ${!x.done&&(x.w||x.sw)?`data-restday="${x.k}" role="button" title="${x.sw?'Make it a training day again':'Make it a rest day'}"`:''}><span>${DAYS[x.d.getDay()][0]}</span><b>${x.done?'✅':x.w?'🏋️':'😴'}</b><small>${x.w?esc(x.w.name.split(' ')[0]):'Rest'}</small></div>`).join('')}</div><p class="meta" style="margin:-4px 0 10px;text-align:center">Tap a training day to make it a rest day (tap again to undo). Your cycle doesn’t move.</p>`;
+  h+=`<div class="week tweek">${wk.map(x=>`<div class="${x.k===todayK()?'sel':''} ${x.w?'on':''} ${x.sw?'swap':''}" ${!x.done&&(x.w||x.sw)?`data-restday="${x.k}" role="button" title="${x.sw?'Make it a training day again':'Make it a rest day'}"`:''}><span>${DAYS[x.d.getDay()][0]}</span><b>${x.done?'✅':x.w?'🏋️':'😴'}</b><small>${x.w?esc(x.w.name.split(' ')[0]):'Rest'}</small></div>`).join('')}</div><p class="meta" style="margin:-4px 0 10px;text-align:center">Tap a training day to make it a rest day (tap again to undo).${T.mode==='cycle'?' The rest of your cycle moves back a day.':''}</p>`;
   if(doneToday)h+=`<div class="card ok"><h2>✅ Today’s training is done</h2><p class="meta">Great work. Next up: <b>${nw?esc(nw.name):''}</b> on your next training day.</p></div>`;
   else if(nw)h+=`<div class="card hero tnext"><div class="avatar">${trainToday?'🔥':'😴'}</div><div class="grow"><div class="meta">${trainToday?'Today’s workout':isRestSwap(today)?'Rest day (swapped). Next workout':'Rest day. Next workout'}</div><div class="qt" style="font-size:20px">${esc(nw.name)}</div><div class="meta">${esc(nw.focus||'')} · ${nw.ex.length} exercises${nw.ex.filter(x=>progFor(x)?.type==='up').length?` · ⬆️ ${nw.ex.filter(x=>progFor(x)?.type==='up').length} ready for more weight`:''}</div></div></div>
     <div class="row" style="margin-bottom:12px"><button class="btn" data-startw="${nw.id}">${trainToday?'▶ Start workout':'▶ Train anyway'}</button><button class="btn ghost" style="flex:0 0 auto" data-act="skipW">Skip ⏭</button></div>
-    ${trainToday||isRestSwap(today)?`<button class="linkbtn" style="display:block;margin:-4px auto 12px" data-restday="${todayK()}">${trainToday?'😴 Make today a rest day (keeps my cycle)':'↩ Undo: make today a training day again'}</button>`:''}`;
+    ${trainToday||isRestSwap(today)?`<button class="linkbtn" style="display:block;margin:-4px auto 12px" data-restday="${todayK()}">${trainToday?'😴 Make today a rest day':'↩ Undo: make today a training day again'}</button>`:''}`;
   h+=`<div class="card"><div class="sec-h"><span>🔁 Rotation · ${T.mode==='cycle'?cycOn()+' on · '+(cycLen()-cycOn())+' off':T.days.length+' days/week'}</span><button class="pill" data-act="editTrain">✎ Edit program</button></div>
     ${T.plan.map((p,i)=>`<div class="li ${nw&&p.id===nw.id?'cur':''}"><span class="rnum">${i+1}</span><div class="grow"><b>${esc(p.name)}</b>${nw&&p.id===nw.id?' <span class="pill">next</span>':''}<div class="meta">${esc(p.focus||'')} · ${p.ex.map(e=>esc(e.name)).slice(0,3).join(', ')}${p.ex.length>3?'…':''}</div></div><button class="ib" data-startw="${p.id}" aria-label="Start ${esc(p.name)}">▶</button></div>`).join('')}
     <p class="meta mt">Your workouts go in order on your training days. A missed day doesn’t skip a workout; the rotation simply continues next time.</p>${T.mode==='cycle'?cycStatusHTML():''}</div>`;
