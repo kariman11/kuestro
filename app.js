@@ -31,8 +31,6 @@ function defaults(){
   ];
   return {
     routines:[
-      r('Morning adhkar','prayer','daily',{time:'06:30'}),
-      r('Read Quran (1 page)','prayer','daily',{time:'21:00'}),
       r('Morning skin care','skincare','daily',{time:'07:00',note:'Cleanser → moisturizer → SPF'}),
       r('Evening skin care','skincare','daily',{time:'22:30',note:'Cleanser → serum → moisturizer'}),
       r('Exfoliate / face mask','skincare','weekly',{days:[3],time:'22:30'}),
@@ -53,12 +51,13 @@ function defaults(){
     lang:{chosen:false,name:'Spanish',code:'es-ES',level:'A2 elementary',native:'English',goal:15,newPerDay:15,duoUrl:'https://www.duolingo.com/learn',reverse:false,ai:'claude',deck:[],reviews:{},seeded:false},
     strava:{clientId:'',clientSecret:'',access:'',refresh:'',expires:0,athlete:'',lastSync:0,after:0},
     ai:{claudeKey:'',claudeModel:'claude-sonnet-5-5',openaiKey:'',openaiModel:'gpt-5-mini',plan:''},
-    settings:{sound:true,prayers:true,city:'Cairo',country:'Egypt',method:5,lat:null,lon:null,weekStart:6,h12:1,prayerApp:links[0].id,lockAfter:1,nudge:true,nudgeTime:'21:30'}
+    cycle:{on:false,pausePrayers:true,periods:[],avgCycle:28,avgLen:5},
+    settings:{sound:true,prayers:false,city:'Cairo',country:'Egypt',method:5,lat:null,lon:null,weekStart:6,h12:1,prayerApp:links[0].id,lockAfter:1,nudge:true,nudgeTime:'21:30'}
   };
 }
 function merge(p){
   const d=defaults();if(!p||!Array.isArray(p.routines))return d;
-  const r={...d,...p,settings:{...d.settings,...p.settings},strava:{...d.strava,...p.strava},ai:{...d.ai,...p.ai},health:p.health||{},ptCache:p.ptCache||{},claimed:p.claimed||{},badges:p.badges||{},rerolls:p.rerolls||{},qSeen:p.qSeen||{},lang:{...d.lang,...p.lang},hero:{...d.hero,...p.hero},meds:p.meds||[],train:{...d.train,...p.train},cards:{...d.cards,...p.cards},todos:p.todos&&Array.isArray(p.todos.lists)?p.todos:d.todos,money:{...d.money,...p.money}};
+  const r={...d,...p,settings:{...d.settings,...p.settings},strava:{...d.strava,...p.strava},ai:{...d.ai,...p.ai},health:p.health||{},ptCache:p.ptCache||{},claimed:p.claimed||{},badges:p.badges||{},rerolls:p.rerolls||{},qSeen:p.qSeen||{},lang:{...d.lang,...p.lang},hero:{...d.hero,...p.hero},meds:p.meds||[],train:{...d.train,...p.train},cards:{...d.cards,...p.cards},todos:p.todos&&Array.isArray(p.todos.lists)?p.todos:d.todos,money:{...d.money,...p.money},cycle:{...d.cycle,...p.cycle}};
   r.routines.forEach(x=>{if(x.note==='DayFlow → Learn → Review')x.note='Kuestro → Learn → Review'});   // renamed app
   r.water={goal:2000,days:{},auto:{},...r.water};
   if(!r.routines.some(x=>x.link==='water')){const w=r.routines.find(x=>x.cat==='meals'&&/water/i.test(x.name));if(w)w.link='water'}
@@ -100,6 +99,7 @@ function showLock(){
 /* ---------- scheduling ---------- */
 function isDue(r,d){
   if(r.start&&key(d)<r.start)return false;
+  if(r.link==='train'&&S.train&&isRestSwap(d))return false;   // day swapped to a rest day
   if(r.link==='train'&&S.train&&S.train.mode==='cycle')return isTrainDay(d);
   switch(r.freq){
     case 'daily':return true;
@@ -128,7 +128,7 @@ function streak(r){
 }
 function dayStats(d){
   const due=S.routines.filter(r=>isDue(r,d));let total=due.length,done=due.filter(r=>isDone(r.id,d)).length;
-  if(S.settings.prayers){total+=5;done+=PRAYERS.filter(p=>isDone('prayer:'+p,d)).length}
+  if(prayersDue(d)){total+=5;done+=PRAYERS.filter(p=>isDone('prayer:'+p,d)).length}
   const ds=dosesOn(d);total+=ds.length;done+=ds.filter(x=>isDone(x.id,d)).length;
   return {total,done,pct:total?Math.round(done/total*100):0};
 }
@@ -226,8 +226,10 @@ function renderToday(){
   if(hd)h+=`<div class="card"><div class="sec-h"><span>❤️ Health</span><span class="meta">from Apple Health</span></div><div class="hstats">${esc(healthLine(hd))}</div></div>`;
   if(S.settings.prayers||groups.prayer){
     const app=linkById(S.settings.prayerApp);
-    h+=`<div class="card"><div class="sec-h"><span>🕌 Prayer <span class="meta" id="hijri"></span></span>${app?`<a class="pill" ${linkAttrs(app.url)}>Open ${esc(app.name)}</a>`:''}</div>`;
-    if(S.settings.prayers)h+=PRAYERS.map(p=>itemHTML('prayer:'+p,p,`<span data-pt="${p}">…</span>`,isDone('prayer:'+p,d))).join('');
+    h+=`<div class="card"><div class="sec-h"><span>🕌 Prayer <span class="meta" id="hijri"></span></span><span style="display:flex;gap:6px">${CY().on?`<button class="pill" data-act="goCycle">🌸 Cycle</button>`:''}${app?`<a class="pill" ${linkAttrs(app.url)}>Open ${esc(app.name)}</a>`:''}</span></div>`;
+    if(S.settings.prayers&&isPeriodDay(d)&&CY().pausePrayers)h+=`<div class="li"><span style="font-size:22px">🌸</span><div class="grow"><b>Period day ${periodDayNo(d)}</b><div class="meta">The 5 prayers are paused today. They don’t count against your streaks or quests.</div></div></div>`;
+    else if(S.settings.prayers)h+=PRAYERS.map(p=>itemHTML('prayer:'+p,p,`<span data-pt="${p}">…</span>`,isDone('prayer:'+p,d))).join('');
+    if(S.settings.prayers&&CY().on&&isToday&&!isPeriodDay(d))h+=`<button class="linkbtn" style="display:block;margin:8px auto 0" data-act="cycStartToday">🌸 My period started today</button>`;
     h+=(groups.prayer||[]).map(rItem).join('')+`</div>`;
   }
   Object.keys(CATS).filter(c=>c!=='prayer'&&c!=='meals'&&groups[c]).forEach(c=>{h+=catCard(c)});
@@ -569,7 +571,7 @@ function coachPrompt(q){
   const since=key(addDays(new Date(),-27)),L=[];
   L.push('You are my personal fitness coach. Use my plan and my real training data below. Be specific and practical, keep it short, and flag anything risky (overtraining, sudden mileage jumps, too little recovery).','',`My question: ${q}`,'',`Today is ${new Date().toDateString()}.`,'','MY WORKOUT PLAN:',S.ai.plan||'(see my training program below)');
   if(T_().plan.length){L.push('',`MY TRAINING PROGRAM (rotates on ${T_().mode==='cycle'?trainSched():T_().days.map(i=>DAYS[i]).join(', ')}; next up: ${nextW()?.name}):`);
-    T_().plan.forEach((p,i)=>L.push(`Day ${i+1} ${p.name} (${p.focus||''}): `+p.ex.map(e=>`${e.name} ${e.sets}x${e.reps}${e.w?` @ ${e.w}${T_().unit}`:''}`).join('; ')));
+    T_().plan.forEach((p,i)=>L.push(`Day ${i+1} ${p.name} (${p.focus||''}): `+p.ex.map(e=>`${e.name} ${e.sets}x${exTarget(e)}${e.w?` @ ${e.w}${T_().unit}`:''}`).join('; ')));
     const rs=T_().sessions.filter(x=>x.date>=since);if(rs.length){L.push('','RECENT WORKOUT SESSIONS (weight x reps):');rs.forEach(x=>L.push(`${x.date} ${x.name} (${x.dur} min): `+x.ex.map(e=>`${e.name} `+e.sets.map(s=>`${s.w}x${s.r}`).join(', ')).join(' | ')))}}
   L.push('','MY SCHEDULED EXERCISE ROUTINES:');
   S.routines.filter(r=>['exercise','running'].includes(r.cat)).forEach(r=>{let due=0,dn=0;for(let i=0;i<28;i++){const d=addDays(new Date(),-i);if(isDue(r,d)){due++;if(isDone(r.id,d))dn++}}
@@ -765,8 +767,8 @@ function renderSettings(){
       <form id="fPass"><input name="p1" type="password" placeholder="Choose a passcode (min 4)" autocomplete="new-password"><input name="p2" type="password" class="mt" placeholder="Repeat it" autocomplete="new-password"><button class="btn full mt">Turn on passcode</button></form>`;
 }
 
-function render(){if(!S)return;({today:renderToday,routines:renderRoutines,log:renderLog,connect:renderConnect,settings:renderSettings,quests:renderQuests,learn:renderLearn,hero:renderHero,train:renderTrain,meds:renderMeds,todos:renderTodos,money:renderMoney,progress:renderProgress})[view]()}
-function show(v){view=v;$$('main>section').forEach(s=>s.classList.toggle('hidden',s.id!=='v-'+v));const tabOf={connect:'settings',routines:'settings',log:'settings',meds:'settings',money:'settings',hero:'quests',progress:'today'};$$('nav.tabs button').forEach(b=>b.classList.toggle('on',b.dataset.tab===(tabOf[v]||v)));if(v!=='train')TEDIT=false;if(v!=='log'){MB.back=false;MB.date=null}$$('main>section').forEach(x=>x.classList.remove('cx-arr'));render();scrollTo(0,0)}
+function render(){if(!S)return;({today:renderToday,routines:renderRoutines,log:renderLog,connect:renderConnect,settings:renderSettings,quests:renderQuests,learn:renderLearn,hero:renderHero,train:renderTrain,meds:renderMeds,cycle:renderCycle,todos:renderTodos,money:renderMoney,progress:renderProgress})[view]()}
+function show(v){view=v;$$('main>section').forEach(s=>s.classList.toggle('hidden',s.id!=='v-'+v));const tabOf={connect:'settings',routines:'settings',log:'settings',meds:'settings',money:'settings',cycle:'settings',hero:'quests',progress:'today'};$$('nav.tabs button').forEach(b=>b.classList.toggle('on',b.dataset.tab===(tabOf[v]||v)));if(v!=='train')TEDIT=false;if(v!=='log'){MB.back=false;MB.date=null}$$('main>section').forEach(x=>x.classList.remove('cx-arr'));render();scrollTo(0,0)}
 function toast(m){const t=$('#toast');t.textContent=m;t.classList.add('on');clearTimeout(t._t);t._t=setTimeout(()=>t.classList.remove('on'),2600)}
 
 /* ---------- Appearance ---------- */
@@ -817,8 +819,9 @@ function routinesIcs(){
     const rule=r.freq==='daily'?'FREQ=DAILY':r.freq==='weekly'?`FREQ=WEEKLY;BYDAY=${r.days.map(i=>BY[i]).join(',')}`:r.freq==='monthly'?`FREQ=MONTHLY;BYMONTHDAY=${r.dom}`:`FREQ=DAILY;INTERVAL=${r.every}`;
     L.push('BEGIN:VEVENT',`UID:${r.id}@dayflow`,`DTSTAMP:${st}`,`SUMMARY:${icsEsc(CATS[r.cat][0]+' '+r.name)}`);
     if(r.note)L.push(`DESCRIPTION:${icsEsc(r.note)}`);
-    if(r.time)L.push(`DTSTART:${ds}T${r.time.replace(':','')}00`,'DURATION:PT20M',`RRULE:${rule}`,'BEGIN:VALARM','ACTION:DISPLAY',`DESCRIPTION:${icsEsc(r.name)}`,'TRIGGER:-PT10M','END:VALARM');
-    else L.push(`DTSTART;VALUE=DATE:${ds}`,`RRULE:${rule}`);
+    const ex=r.link==='train'?Object.keys(restSwaps()).filter(k=>k>=key(now)).map(k=>k.replace(/-/g,'')):[];   // swapped rest days
+    if(r.time)L.push(`DTSTART:${ds}T${r.time.replace(':','')}00`,'DURATION:PT20M',`RRULE:${rule}`,...ex.map(x=>`EXDATE:${x}T${r.time.replace(':','')}00`),'BEGIN:VALARM','ACTION:DISPLAY',`DESCRIPTION:${icsEsc(r.name)}`,'TRIGGER:-PT10M','END:VALARM');
+    else L.push(`DTSTART;VALUE=DATE:${ds}`,`RRULE:${rule}`,...ex.map(x=>`EXDATE;VALUE=DATE:${x}`));
     L.push('END:VEVENT');
   });
   L.push('END:VCALENDAR');download(L.join('\r\n'),'kuestro-routines.ics','text/calendar');toast('Calendar file downloaded');
@@ -965,9 +968,10 @@ document.addEventListener('click',async e=>{
   if(el=c('[data-mtimes]')){$('#mTimes').innerHTML=el.dataset.mtimes.split(',').map(t=>`<input type="time" name="mtime" value="${t}">`).join('');return}
   if(el=c('[data-startw]')){if(T_().active&&!confirm('A workout is already in progress. Start a new one?'))return;return startWorkout(el.dataset.startw)}
   if(el=c('[data-setdone]')){const[ei,si]=el.dataset.setdone.split(':').map(Number),a=T_().active,st=a.ex[ei].sets[si];st.done=!st.done;
+    if(isTimed(a.ex[ei])){st.done=!st.done;if(STIM&&STIM.ei===ei&&STIM.si===si)return stopSetTimer(true);if(!st.done)return startSetTimer(ei,si);st.done=false;save();return renderTrain()}
     if(st.done){if(st.r===''){st.r=String(a.ex[ei].reps).match(/\d+/)?.[0]||''}if(st.w===''&&si>0)st.w=a.ex[ei].sets[si-1].w;burst(e.clientX,e.clientY,'workout');startRest(a.ex[ei].rest)}save();return renderTrain()}
-  if(el=c('[data-addset]')){const ex=T_().active.ex[+el.dataset.addset],l=ex.sets[ex.sets.length-1]||{};ex.sets.push({w:l.w||'',r:l.r||'',done:false});save();return renderTrain()}
-  if(el=c('[data-delset]')){const ex=T_().active.ex[+el.dataset.delset];if(ex.sets.length>1)ex.sets.pop();save();return renderTrain()}
+  if(el=c('[data-addset]')){const ex=T_().active.ex[+el.dataset.addset],l=ex.sets[ex.sets.length-1]||{};ex.sets.push(isTimed(ex)?{w:l.w||'',t:l.t||String(ex.secs||''),done:false}:{w:l.w||'',r:l.r||'',done:false});save();return renderTrain()}
+  if(el=c('[data-delset]')){const ei=+el.dataset.delset,ex=T_().active.ex[ei];if(ex.sets.length>1){if(STIM&&STIM.ei===ei&&STIM.si===ex.sets.length-1)stopSetTimer(false);ex.sets.pop()}save();return renderTrain()}
   if(el=c('[data-exadd]')){T_().plan[+el.dataset.exadd].ex.push(EX('',3,'8-12'));save();renderTrain();const ins=$$(`[data-pe^="${el.dataset.exadd}:"][data-pe$=":name"]`);ins[ins.length-1]?.focus();return}
   if(el=c('[data-exdel]')){const[di,ei]=el.dataset.exdel.split(':').map(Number);T_().plan[di].ex.splice(ei,1);save();return renderTrain()}
   if(el=c('[data-exmove]')){const[di,ei,dir]=el.dataset.exmove.split(':').map(Number),a=T_().plan[di].ex,j=ei+dir;if(j>=0&&j<a.length){[a[ei],a[j]]=[a[j],a[ei]];save();renderTrain()}return}
@@ -1001,6 +1005,15 @@ document.addEventListener('click',async e=>{
     case 'goTrain':return show('train');
     case 'goTodos':TL='today';return show('todos');
     case 'goMoney':return show('money');
+    case 'goCycle':return show('cycle');
+    case 'cycOn':CY().on=true;save();return renderCycle();
+    case 'cycOff':if(confirm('Turn off cycle tracking? Your logged periods are kept.')){CY().on=false;save();renderCycle()}return;
+    case 'cycStartToday':return cycStart(todayK());
+    case 'cycEndToday':return cycEnd(todayK());
+    case 'cycPrev':CYM=addMonths(CYM,-1);return renderCycle();
+    case 'cycNext':CYM=addMonths(CYM,1);return renderCycle();
+    case 'cycAddPast':{const s=$('#cyS').value,e=$('#cyE').value;if(!s)return toast('Pick the start date');if(e&&e<s)return toast('The end is before the start');
+      CY().periods.push({id:uid(),s,e:e||null});sortPeriods();save();toast('Period added');return render()}
     case 'goProgress':PV='week';POFF=0;return show('progress');
     case 'mImport':IMPORT=IMPORT?null:{text:'',parsed:null};MADD=false;return renderMoney();
     case 'mImportClose':IMPORT=null;return renderMoney();
@@ -1100,7 +1113,10 @@ document.addEventListener('change',e=>{
   if(t.form&&t.form.id==='setForm'&&['weekStart','h12','prayers','method','sound'].includes(t.name))t.form.requestSubmit();
 });
 function planEdit(t){const[di,ei,f]=t.dataset.pe.split(':');const p=T_().plan[+di];if(!p)return;
-  if(ei==='')p[f]=t.value;else{const x=p.ex[+ei];if(x)x[f]=f==='sets'||f==='rest'?Math.max(0,+t.value||0):t.value}clearTimeout(planEdit._t);planEdit._t=setTimeout(save,400)}
+  if(ei==='')p[f]=t.value;else{const x=p.ex[+ei];if(!x)return;
+    if(f==='type'){if(t.value==='time'){x.type='time';x.secs=+x.secs||(repNums(x.reps)[0]>=10?repNums(x.reps)[0]:30)}else{delete x.type;if(!repNums(x.reps).length||/\bs\b|sec/i.test(x.reps))x.reps='8-12'}save();return renderTrain()}
+    x[f]=f==='sets'||f==='rest'||f==='secs'?Math.max(0,+t.value||0):t.value;if(f==='secs')x.reps=x[f]+' s'}
+  clearTimeout(planEdit._t);planEdit._t=setTimeout(save,400)}
 document.addEventListener('change',e=>{if(S&&e.target.dataset&&e.target.dataset.pe)planEdit(e.target)});
 document.addEventListener('input',e=>{const t=e.target;
   if(S&&t.dataset&&t.dataset.set){const[ei,si,f]=t.dataset.set.split(':'),a=T_().active;if(a&&a.ex[+ei]){a.ex[+ei].sets[+si][f]=t.value;clearTimeout(t._t);t._t=setTimeout(save,400)}return}
@@ -1596,6 +1612,83 @@ function medAdherence(days,medId){
   return due?Math.round(dn/due*100):null;
 }
 const nowHM=()=>{const n=new Date();return `${pad(n.getHours())}:${pad(n.getMinutes())}`};
+/* ---------- Period / cycle tracker (pauses the 5 prayers on period days) ---------- */
+const CY=()=>{S.cycle=S.cycle||{on:false,pausePrayers:true,periods:[],avgCycle:28,avgLen:5};S.cycle.periods=S.cycle.periods||[];return S.cycle};
+const PMAX=15;   // an unended period stops counting after this many days
+let CYM=null;    // month shown in the cycle calendar
+const addMonths=(d,n)=>new Date(d.getFullYear(),d.getMonth()+n,1);
+const sortPeriods=()=>CY().periods.sort((a,b)=>a.s<b.s?-1:1);
+const pEnd=p=>{const cap=key(addDays(parse(p.s),PMAX-1));if(p.e)return p.e;const t=todayK();return t<cap?t:cap};
+const periodOf=k=>CY().periods.find(p=>k>=p.s&&k<=pEnd(p));
+const isPeriodDay=d=>{if(!S||!S.cycle||!S.cycle.on)return false;return !!periodOf(key(d))};
+const periodDayNo=d=>{const p=periodOf(key(d));return p?dayDiff(parse(p.s),d)+1:0};
+const prayersDue=d=>!!S.settings.prayers&&!(CY().pausePrayers&&isPeriodDay(d));
+const openPeriod=()=>CY().periods.find(p=>!p.e&&pEnd(p)>=todayK());
+const avg=a=>a.length?Math.round(a.reduce((x,y)=>x+y,0)/a.length):0;
+function cycleStats(){const c=CY(),ps=[...c.periods].sort((a,b)=>a.s<b.s?-1:1);
+  const gaps=[];for(let i=1;i<ps.length;i++){const g=dayDiff(parse(ps[i-1].s),parse(ps[i].s));if(g>=15&&g<=60)gaps.push(g)}
+  const lens=ps.filter(p=>p.e).map(p=>dayDiff(parse(p.s),parse(p.e))+1).filter(n=>n>0&&n<=PMAX);
+  const cyc=avg(gaps.slice(-6))||+c.avgCycle||28,len=avg(lens.slice(-6))||+c.avgLen||5,last=ps[ps.length-1];
+  let next=null,late=0;
+  if(last){next=addDays(parse(last.s),cyc);const t=parse(todayK());if(next<t&&!openPeriod())late=dayDiff(next,t)}
+  return {cyc,len,last,next,late,n:ps.length,gaps:gaps.length};
+}
+const isPredicted=(k,st)=>{if(!st.next)return false;for(let i=0;i<3;i++){const s=key(addDays(st.next,i*st.cyc)),e=key(addDays(st.next,i*st.cyc+st.len-1));if(k>=s&&k<=e)return true}return false};
+function cycStart(k){const c=CY();if(periodOf(k))return toast('That day is already a period day');
+  const o=openPeriod();if(o&&o.s<k)o.e=key(addDays(parse(k),-1));
+  c.periods.push({id:uid(),s:k,e:null});sortPeriods();save();toast(c.pausePrayers&&S.settings.prayers?'🌸 Logged. Prayers are paused until it ends':'🌸 Period logged');render()}
+function cycEnd(k){const o=openPeriod();if(!o)return toast('No period in progress');if(k<o.s)return toast('That is before it started');o.e=k;save();toast('Period ended. Prayers are back on Today');render()}
+function renderCycle(){
+  const c=CY(),box=$('#cycleBody');let h='';
+  if(!c.on){box.innerHTML=`<div class="card"><h2>🌸 Cycle tracker</h2><p class="meta">Log your period and Kuestro pauses the 5 prayers on those days, so they don’t break your streaks or quests. It also predicts your next period from your history.</p><p class="meta">Everything stays on this device (and is encrypted if you set a passcode).</p><button class="btn full mt" data-act="cycOn">Turn on cycle tracking</button></div>`;return}
+  const st=cycleStats(),t=new Date(),tk=todayK(),o=openPeriod();
+  if(o){const n=dayDiff(parse(o.s),t)+1;
+    h+=`<div class="card hero"><div class="avatar">🌸</div><div class="grow"><div class="meta">Period in progress</div><div class="qt" style="font-size:20px">Day ${n}</div><div class="meta">Started ${parse(o.s).toLocaleDateString(undefined,{weekday:'short',day:'numeric',month:'short'})}${c.pausePrayers&&S.settings.prayers?' · prayers paused':''}</div></div></div>
+      <div class="row" style="margin-bottom:12px"><button class="btn" data-act="cycEndToday">✓ My period ended today</button></div>`;
+  }else{
+    const cd=st.last?dayDiff(parse(st.last.s),t)+1:0,left=st.next?dayDiff(t,st.next):null;
+    h+=`<div class="card hero"><div class="avatar">🌙</div><div class="grow"><div class="meta">${st.last?`Cycle day ${cd}`:'No period logged yet'}</div><div class="qt" style="font-size:20px">${!st.next?'Log your first period':st.late?`Late by ${st.late} day${st.late===1?'':'s'}`:left===0?'Period expected today':`Next period in ~${left} day${left===1?'':'s'}`}</div>${st.next?`<div class="meta">Expected around ${st.next.toLocaleDateString(undefined,{weekday:'short',day:'numeric',month:'short'})}</div>`:''}</div></div>
+      <div class="row" style="margin-bottom:12px"><button class="btn" data-act="cycStartToday">🌸 My period started today</button></div>`;
+  }
+  // month calendar
+  CYM=CYM||new Date(t.getFullYear(),t.getMonth(),1);
+  const ws=+S.settings.weekStart||0,first=CYM,dim=new Date(first.getFullYear(),first.getMonth()+1,0).getDate(),lead=(first.getDay()-ws+7)%7;
+  let cal='';for(let i=0;i<7;i++)cal+=`<div class="cal-h">${DAYS[(ws+i)%7][0]}</div>`;
+  for(let i=0;i<lead;i++)cal+='<div></div>';
+  for(let i=1;i<=dim;i++){const d=new Date(first.getFullYear(),first.getMonth(),i),k=key(d),per=periodOf(k),pr=!per&&isPredicted(k,st);
+    cal+=`<button class="cal-d ${k===tk?'today':''} ${per?'per':pr?'pred':''}" data-cycday="${k}" ${k>tk?'disabled':''}>${i}</button>`}
+  h+=`<div class="card"><div class="sec-h"><button class="pill" data-act="cycPrev" aria-label="Previous month">‹</button><span>${first.toLocaleDateString(undefined,{month:'long',year:'numeric'})}</span><button class="pill" data-act="cycNext" aria-label="Next month">›</button></div>
+    <div class="cal cycal mt">${cal}</div>
+    <p class="meta mt"><span class="cylg per"></span> period · <span class="cylg pred"></span> predicted. Tap a past day to log a period starting then, or to end the one in progress.</p></div>`;
+  h+=`<div class="card"><div class="stats"><div class="stat"><b>${st.cyc}</b><span class="meta">day cycle${st.gaps?' (avg)':' (your default)'}</span></div><div class="stat"><b>${st.len}</b><span class="meta">day period</span></div><div class="stat"><b>${st.n}</b><span class="meta">logged</span></div></div></div>`;
+  const ps=[...c.periods].reverse();
+  h+=`<div class="card"><h2>History</h2>${ps.length?ps.map(p=>`<div class="li"><span>🌸</span><div class="grow row" style="gap:6px"><input type="date" data-pedit="${p.id}:s" value="${p.s}"><input type="date" data-pedit="${p.id}:e" value="${p.e||''}" placeholder="ongoing"></div><button class="ib" data-pdel="${p.id}" aria-label="Delete">×</button></div>`).join(''):'<div class="empty">Your periods will show here.</div>'}
+    <label class="f mt">Add a past period</label><div class="row"><input type="date" id="cyS" max="${tk}"><input type="date" id="cyE" max="${tk}"><button class="btn ghost" style="flex:0 0 auto" data-act="cycAddPast">Add</button></div></div>`;
+  h+=`<div class="card"><h2>Settings</h2>
+    <label style="display:flex;gap:8px;align-items:center"><input type="checkbox" data-cyset="pausePrayers" ${c.pausePrayers?'checked':''}> Pause the 5 prayers on period days</label>
+    <div class="row mt"><label class="mini">Usual cycle (days)<input type="number" inputmode="numeric" min="15" max="60" data-cyset="avgCycle" value="${+c.avgCycle||28}"></label><label class="mini">Usual period (days)<input type="number" inputmode="numeric" min="1" max="${PMAX}" data-cyset="avgLen" value="${+c.avgLen||5}"></label></div>
+    <p class="meta mt">Used for predictions until you have logged a few cycles. A period you don’t end stops counting after ${PMAX} days.</p>
+    <button class="linkbtn" style="display:block;margin:8px auto 0" data-act="cycOff">Turn off cycle tracking</button></div>`;
+  box.innerHTML=h;
+}
+document.addEventListener('click',e=>{if(!S)return;const b=e.target.closest('[data-cycday],[data-pdel]');if(!b)return;e.preventDefault();
+  if(b.dataset.pdel){if(confirm('Delete this period?')){CY().periods=CY().periods.filter(p=>p.id!==b.dataset.pdel);save();render()}return}
+  const k=b.dataset.cycday,p=periodOf(k),o=openPeriod(),lbl=parse(k).toLocaleDateString(undefined,{weekday:'short',day:'numeric',month:'short'});
+  if(p){if(p===o&&k>=p.s&&confirm(`End this period on ${lbl}?`))cycEnd(k);else if(p!==o)toast('Edit or delete it in History below');return}
+  if(o&&k>o.s){if(confirm(`End this period on ${lbl}?`))cycEnd(k);return}
+  if(confirm(`Log a period starting ${lbl}?`)){const nx=CY().periods.find(x=>x.s>k);if(nx){CY().periods.push({id:uid(),s:k,e:key(addDays(parse(k),Math.min(cycleStats().len,dayDiff(parse(k),parse(nx.s)))-1))});sortPeriods();save();render()}else cycStart(k)}
+});
+document.addEventListener('change',e=>{const t=e.target;if(!S||!t.dataset)return;
+  if(t.dataset.pedit){const [id,f]=t.dataset.pedit.split(':'),p=CY().periods.find(x=>x.id===id);if(!p)return;
+    if(f==='s'){if(!t.value)return renderCycle();if(p.e&&t.value>p.e)return toast('The start is after the end'),renderCycle();p.s=t.value}
+    else{if(t.value&&t.value<p.s)return toast('The end is before the start'),renderCycle();p.e=t.value||null}
+    sortPeriods();save();return renderCycle()}
+  if(t.dataset.cyset){const c=CY(),f=t.dataset.cyset;
+    if(f==='pausePrayers')c.pausePrayers=t.checked;
+    else if(f==='avgCycle')c.avgCycle=Math.min(60,Math.max(15,Math.round(+t.value)||28));
+    else c.avgLen=Math.min(PMAX,Math.max(1,Math.round(+t.value)||5));
+    save();renderCycle()}
+});
 function renderMeds(){
   const list=S.meds||[];let h='';
   const a7=medAdherence(7),a30=medAdherence(30),low=list.filter(m=>m.active!==false&&medTracked(m)&&+m.stock<=(+m.refillAt||0));
@@ -1650,29 +1743,42 @@ function medsIcs(){
 
 /* ---------- Training program (rotational) ---------- */
 const EX=(name,sets,reps,rest=90,w='')=>({id:uid(),name,sets,reps,rest,w});
+const EXT=(name,sets,secs,rest=60,w='')=>({id:uid(),name,sets,type:'time',secs,reps:secs+' s',rest,w});   // timed exercise: each set is a countdown
+const isTimed=e=>e&&e.type==='time';
+const fmtSec=s=>{s=Math.max(0,Math.round(+s||0));return s>=60?Math.floor(s/60)+':'+pad(s%60):s+'s'};
+const exTarget=e=>isTimed(e)?fmtSec(e.secs):String(e.reps??'');
+const setTxt=s=>s.t!=null?`${s.w?s.w+'×':''}${fmtSec(s.t)}`:`${s.w||0}×${s.r||0}`;
 function defaultPlan(){return [
   {id:uid(),name:'Push',focus:'Chest · Shoulders · Triceps',ex:[EX('Bench press',4,'6-8',120),EX('Incline dumbbell press',3,'8-10'),EX('Overhead shoulder press',3,'8-10'),EX('Lateral raise',3,'12-15',60),EX('Triceps pushdown',3,'10-12',60)]},
   {id:uid(),name:'Pull',focus:'Back · Biceps',ex:[EX('Pull-ups / lat pulldown',4,'6-10',120),EX('Barbell row',3,'8-10'),EX('Seated cable row',3,'10-12'),EX('Face pull',3,'12-15',60),EX('Dumbbell curl',3,'10-12',60)]},
   {id:uid(),name:'Legs',focus:'Quads · Hamstrings · Calves',ex:[EX('Back squat',4,'6-8',150),EX('Romanian deadlift',3,'8-10',120),EX('Leg press',3,'10-12'),EX('Leg curl',3,'10-12',60),EX('Calf raise',4,'12-15',60)]},
   {id:uid(),name:'Upper',focus:'Strength + volume',ex:[EX('Incline bench press',3,'6-8',120),EX('Chin-ups',3,'max',120),EX('Dumbbell shoulder press',3,'8-10'),EX('Chest-supported row',3,'10-12'),EX('Hammer curl',3,'10-12',60),EX('Overhead triceps extension',3,'10-12',60)]},
-  {id:uid(),name:'Lower + Core',focus:'Glutes · Hamstrings · Abs',ex:[EX('Deadlift',3,'5',180),EX('Bulgarian split squat',3,'8-10/leg'),EX('Hip thrust',3,'8-12'),EX('Plank',3,'45 s',60),EX('Hanging knee raise',3,'12-15',60)]},
+  {id:uid(),name:'Lower + Core',focus:'Glutes · Hamstrings · Abs',ex:[EX('Deadlift',3,'5',180),EX('Bulgarian split squat',3,'8-10/leg'),EX('Hip thrust',3,'8-12'),EXT('Plank',3,45,60),EX('Hanging knee raise',3,'12-15',60)]},
 ]}
 const T_=()=>S.train;
 const cyc=()=>{const T=T_();T.cyc=T.cyc||{on:5,off:1,start:''};return T.cyc};
 const cycOn=()=>Math.max(1,Math.round(+cyc().on||1));
 const cycLen=()=>cycOn()+Math.max(0,Math.round(+cyc().off||0));
 const cycPos=d=>{const n=dayDiff(parse(cyc().start||todayK()),d),L=cycLen();return ((n%L)+L)%L};   // 0 = first training day of the cycle
-const isTrainDay=d=>T_().mode==='cycle'?cycPos(d)<cycOn():T_().days.includes(d.getDay());
+const restSwaps=()=>{const T=T_();T.rest=T.rest||{};return T.rest};   // { 'YYYY-MM-DD': 1 }: planned training days you turned into rest days
+const isPlannedTrainDay=d=>T_().mode==='cycle'?cycPos(d)<cycOn():T_().days.includes(d.getDay());
+const isRestSwap=d=>!!restSwaps()[key(d)];
+const isTrainDay=d=>isPlannedTrainDay(d)&&!isRestSwap(d);   // a swap never moves the cycle; the workouts just continue on the next training day
+function toggleRestDay(k){const R=restSwaps();
+  if(R[k]){delete R[k];save();return toast('Back to a training day')}
+  if(!isPlannedTrainDay(parse(k)))return toast('That is already a rest day');
+  R[k]=1;const old=key(addDays(new Date(),-60));Object.keys(R).forEach(x=>{if(x<old)delete R[x]});   // tidy old swaps
+  save();toast('😴 Rest day. Your cycle stays the same')}
 const trainSched=()=>T_().mode==='cycle'?`${cycOn()} training days, then ${cycLen()-cycOn()} rest day${cycLen()-cycOn()===1?'':'s'}, repeating`:`${T_().days.length} days/week`;
-const cycNowText=()=>{const p=cycPos(new Date()),on=cycOn();return p<on?`Today is training day ${p+1} of ${on}.`:`Today is a rest day (${p-on+1} of ${cycLen()-on}).`};
-const tPrevHTML=()=>{let h='';for(let i=0;i<14;i++){const d=addDays(new Date(),i),on=isTrainDay(d);h+=`<div class="${on?'on':''} ${i===0?'today':''}"><span>${DAYS[d.getDay()][0]}</span><b>${d.getDate()}</b><i>${on?'🏋️':'😴'}</i></div>`}return h};
+const cycNowText=()=>{const p=cycPos(new Date()),on=cycOn();return p<on?(isRestSwap(new Date())?`Today is training day ${p+1} of ${on}, swapped to a rest day.`:`Today is training day ${p+1} of ${on}.`):`Today is a rest day (${p-on+1} of ${cycLen()-on}).`};
+const tPrevHTML=()=>{let h='';for(let i=0;i<14;i++){const d=addDays(new Date(),i),on=isTrainDay(d),sw=isRestSwap(d);h+=`<div class="${on?'on':''} ${sw?'swap':''} ${i===0?'today':''}" ${on||sw?`data-restday="${key(d)}" role="button" title="${sw?'Make it a training day again':'Make it a rest day'}"`:''}><span>${DAYS[d.getDay()][0]}</span><b>${d.getDate()}</b><i>${on?'🏋️':'😴'}</i></div>`}return h};
 function cycleEditHTML(){const c=cyc();
   return `<div class="row mt"><label class="mini">Train for (days)<input type="number" inputmode="numeric" min="1" max="14" data-cyc="on" value="${cycOn()}"></label><label class="mini">then rest (days)<input type="number" inputmode="numeric" min="0" max="14" data-cyc="off" value="${cycLen()-cycOn()}"></label></div>
     <label class="f">First training day of the current cycle</label><div class="row"><input type="date" data-cyc="start" value="${c.start||todayK()}"><button type="button" class="btn ghost" style="flex:0 0 auto" data-act="cycRestart">Today</button></div>
     <p class="meta mt" id="cycNow">${cycNowText()}</p>`}
 function cycStatusHTML(){const p=cycPos(new Date());
   return `<p class="meta mt"><b>${cycNowText()}</b> Cycle: ${cycOn()} on, ${cycLen()-cycOn()} off.</p>
-    <div class="row" style="flex-wrap:wrap"><button class="linkbtn" data-act="cycRestart">↺ Today is day 1 of my cycle</button>${p<cycOn()?'<button class="linkbtn" data-act="cycSkip">😴 Skip today (shift my cycle a day)</button>':''}</div>`}
+    <div class="row" style="flex-wrap:wrap"><button class="linkbtn" data-act="cycRestart">↺ Today is day 1 of my cycle</button>${p<cycOn()&&!isRestSwap(new Date())?'<button class="linkbtn" data-act="cycSkip">⏩ Skip today (shift my cycle a day)</button>':''}</div>`}
 const nextW=()=>{const p=T_().plan;return p.length?p[((T_().idx%p.length)+p.length)%p.length]:null};
 const sessionsOn=k=>T_().sessions.filter(x=>x.date===k);
 function syncTrainRoutine(){const r=S.routines.find(r=>r.link==='train');if(r){r.days=[...T_().days];r.freq='weekly'}}
@@ -1690,6 +1796,7 @@ function bestW(name,beforeId){
 const repNums=r=>(String(r||'').match(/\d+/g)||[]).map(Number);
 const wJump=(w,unit)=>unit==='lb'?(w<45?2.5:5):(w<20?1:2.5);
 function progFor(e){
+  if(isTimed(e))return null;                        // timed sets: no weight suggestion
   const last=lastSets(e.name),top=Math.max(0,...repNums(e.reps));
   if(!last||!top)return null;                       // first time, or reps like "max"
   const lw=Math.max(0,...last.map(s=>+s.w||0));
@@ -1705,15 +1812,17 @@ function startWorkout(wid){
   const w=T_().plan.find(p=>p.id===wid)||nextW();if(!w)return toast('Add a workout day first');
   T_().active={wid:w.id,name:w.name,start:Date.now(),date:todayK(),ex:w.ex.map(e=>{const last=lastSets(e.name)||[];
     const pg=progFor(e),tw=pg?String(pg.w):(e.w!==undefined&&e.w!==null&&String(e.w).trim()!==''?String(e.w).trim():'');
-    return {name:e.name,reps:e.reps,rest:+e.rest||90,tw,prog:pg,sets:[...Array(Math.max(1,+e.sets||3))].map((_,i)=>({w:tw||(last[i]?.w??last[last.length-1]?.w??''),r:last[i]?.r??'',done:false}))}})};
+    const tm=isTimed(e),w0=i=>tw||(last[i]?.w??last[last.length-1]?.w??'');
+    return {name:e.name,reps:e.reps,...(tm?{type:'time',secs:+e.secs||30}:{}),rest:+e.rest||(tm?60:90),tw,prog:pg,sets:[...Array(Math.max(1,+e.sets||3))].map((_,i)=>tm?{w:w0(i),t:String(+e.secs||30),done:false}:{w:w0(i),r:last[i]?.r??'',done:false})}})};
   save();show('train');
 }
 function finishWorkout(){
   const a=T_().active;if(!a)return;
-  const done=a.ex.map(e=>({name:e.name,sets:e.sets.filter(s=>s.done).map(s=>({w:+s.w||0,r:+s.r||0}))})).filter(e=>e.sets.length);
+  if(STIM)stopSetTimer(true);
+  const done=a.ex.map(e=>({name:e.name,...(isTimed(e)?{type:'time'}:{}),sets:e.sets.filter(s=>s.done).map(s=>isTimed(e)?{w:+s.w||0,t:+s.t||0}:{w:+s.w||0,r:+s.r||0})})).filter(e=>e.sets.length);
   const nSets=done.reduce((t,e)=>t+e.sets.length,0);
   if(!nSets&&!confirm('No sets are checked. Finish anyway?'))return;
-  const dur=Math.max(1,Math.round((Date.now()-a.start)/60000)),vol=Math.round(done.reduce((t,e)=>t+e.sets.reduce((u,s)=>u+s.w*s.r,0),0));
+  const dur=Math.max(1,Math.round((Date.now()-a.start)/60000)),vol=Math.round(done.reduce((t,e)=>t+e.sets.reduce((u,s)=>u+s.w*(s.r||0),0),0));
   const id=uid();let prs=[];
   done.forEach(e=>{const best=bestW(e.name),top=Math.max(...e.sets.map(s=>s.w));if(top>0&&top>best&&best>0)prs.push(`${e.name} ${top}${T_().unit}`)});
   T_().sessions.push({id,date:a.date,wid:a.wid,name:a.name,ex:done,dur,vol,prs:prs.length});
@@ -1727,7 +1836,25 @@ function finishWorkout(){
   showQC({theme:'workout',title:prs.length?'NEW PR!':'WORKOUT CLEAR!',qtitle:`${a.name} · ${dur} min · ${nSets} set${nSets===1?'':'s'}${vol?` · ${vol.toLocaleString()} ${T_().unit} lifted`:''}`,sub:prs.length?`🏆 ${prs.slice(0,3).join(' · ')}`:'',xp:XP_LOG+XP_ROUTINE});
   checkProgress();render();
 }
-let REST=null,TEDIT=false;
+let REST=null,TEDIT=false,STIM=null;
+/* ---------- Timed sets: a countdown per set ---------- */
+function startSetTimer(ei,si){
+  const a=T_().active;if(!a)return;if(STIM)stopSetTimer(true);stopRest();
+  const st=a.ex[ei].sets[si],secs=Math.max(1,+st.t||+a.ex[ei].secs||30);st.t=String(secs);
+  STIM={ei,si,secs,start:Date.now(),end:Date.now()+secs*1000};STIM.iv=setInterval(tickSetTimer,200);save();renderTrain();
+}
+function stopSetTimer(markDone){
+  const a=T_().active,x=STIM;if(!x)return;clearInterval(x.iv);STIM=null;
+  const ex=a&&a.ex[x.ei],st=ex&&ex.sets[x.si];
+  if(st&&markDone){const went=Math.round((Date.now()-x.start)/1000);st.t=String(Math.min(x.secs,Math.max(1,went)));st.done=true;
+    if(navigator.vibrate)navigator.vibrate([200,100,200]);playSound('workout');startRest(ex.rest)}
+  save();if(view==='train')renderTrain();
+}
+function tickSetTimer(){
+  if(!STIM)return;const left=Math.max(0,Math.ceil((STIM.end-Date.now())/1000));
+  const b=document.querySelector(`[data-setdone="${STIM.ei}:${STIM.si}"]`);if(b)b.textContent=fmtSec(left);
+  if(left<=0){stopSetTimer(true);toast('Time! Set done 💪')}
+}
 function startRest(sec){
   stopRest();if(!sec)return;REST={end:Date.now()+sec*1000};
   REST.iv=setInterval(tickRest,250);tickRest();
@@ -1745,7 +1872,7 @@ function weekPlanPreview(){
   const doneToday=sessionsOn(today).length>0;
   for(let i=0;i<7;i++){const d=addDays(new Date(),i),k=key(d);
     if(i===0&&doneToday){out.push({d,k,w:{name:sessionsOn(today)[0].name},done:true});continue}
-    if(isTrainDay(d)&&p.length){out.push({d,k,w:p[((idx%p.length)+p.length)%p.length]});idx++}else out.push({d,k,w:null})}
+    if(isTrainDay(d)&&p.length){out.push({d,k,w:p[((idx%p.length)+p.length)%p.length]});idx++}else out.push({d,k,w:null,sw:isRestSwap(d)})}
   return out;
 }
 function renderTrain(){
@@ -1756,29 +1883,35 @@ function renderTrain(){
     const doneSets=a.ex.reduce((t,e)=>t+e.sets.filter(s=>s.done).length,0),all=a.ex.reduce((t,e)=>t+e.sets.length,0);
     h+=`<div class="card hero"><div class="avatar">🏋️</div><div class="grow"><div class="sec-h"><span>${esc(a.name)}</span><span class="meta" id="elapsed"></span></div><div class="bar xp"><i style="width:${all?Math.round(doneSets/all*100):0}%"></i></div><div class="meta">${doneSets} / ${all} sets done</div></div></div>`;
     a.ex.forEach((e,ei)=>{const last=lastSets(e.name);
-      h+=`<div class="card"><div class="sec-h"><span>${esc(e.name)}</span><span class="meta">${e.sets.length}×${esc(e.reps)}${e.tw?` · 🎯 ${esc(e.tw)} ${T.unit}`:''} · rest ${e.rest>=60?Math.floor(e.rest/60)+':'+pad(e.rest%60):e.rest+'s'}</span></div>
+      const tm=isTimed(e);
+      h+=`<div class="card"><div class="sec-h"><span>${esc(e.name)}</span><span class="meta">${e.sets.length}×${esc(exTarget(e))}${tm?' ⏱️':''}${e.tw?` · 🎯 ${esc(e.tw)} ${T.unit}`:''} · rest ${e.rest>=60?Math.floor(e.rest/60)+':'+pad(e.rest%60):e.rest+'s'}</span></div>
         ${e.prog?progHTML(e.prog,T.unit):''}
-        ${last?`<div class="meta">Last time: ${last.map(s=>`${s.w||0}×${s.r||0}`).join(', ')}</div>`:''}
-        <div class="sets"><div class="sh"><span>Set</span><span>${T.unit}</span><span>Reps</span><span></span></div>
-        ${e.sets.map((s,si)=>`<div class="srow ${s.done?'done':''}"><span class="sn">${si+1}</span><input type="number" inputmode="decimal" step="any" min="0" data-set="${ei}:${si}:w" value="${esc(s.w)}" placeholder="0"><input type="number" inputmode="numeric" min="0" data-set="${ei}:${si}:r" value="${esc(s.r)}" placeholder="${esc(String(e.reps).match(/\d+/)?.[0]||'')}"><button class="chkbtn" data-setdone="${ei}:${si}" aria-label="Set done">✓</button></div>`).join('')}</div>
+        ${last?`<div class="meta">Last time: ${last.map(setTxt).join(', ')}</div>`:''}
+        <div class="sets"><div class="sh"><span>Set</span><span>${T.unit}</span><span>${tm?'Seconds':'Reps'}</span><span></span></div>
+        ${e.sets.map((s,si)=>{const run=tm&&STIM&&STIM.ei===ei&&STIM.si===si;
+          return `<div class="srow ${s.done?'done':''} ${run?'run':''}"><span class="sn">${si+1}</span><input type="number" inputmode="decimal" step="any" min="0" data-set="${ei}:${si}:w" value="${esc(s.w)}" placeholder="0">${tm
+            ?`<input type="number" inputmode="numeric" min="1" data-set="${ei}:${si}:t" value="${esc(s.t??'')}" placeholder="${+e.secs||30}" ${run?'disabled':''}><button class="chkbtn ${tm?'tbtn':''}" data-setdone="${ei}:${si}" aria-label="${run?'Stop timer':s.done?'Undo set':'Start timer'}">${run?fmtSec(Math.ceil((STIM.end-Date.now())/1000)):s.done?'✓':'▶'}</button>`
+            :`<input type="number" inputmode="numeric" min="0" data-set="${ei}:${si}:r" value="${esc(s.r)}" placeholder="${esc(String(e.reps).match(/\d+/)?.[0]||'')}"><button class="chkbtn" data-setdone="${ei}:${si}" aria-label="Set done">✓</button>`}</div>`}).join('')}</div>
+        ${tm?`<p class="meta" style="margin:4px 0 0">Tap ▶ to start the countdown. Tap it again to stop early; the set saves the time you held.</p>`:''}
         <div class="row mt"><button class="pill" style="flex:0 0 auto" data-addset="${ei}">+ Set</button>${e.sets.length>1?`<button class="pill" style="flex:0 0 auto" data-delset="${ei}">− Set</button>`:''}</div></div>`});
     h+=`<button class="btn full" data-act="finishW">🏁 Finish workout</button><button class="linkbtn" style="display:block;margin:12px auto" data-act="cancelW">Cancel workout</button>`;
     box.innerHTML=h;tickElapsed();return;
   }
   const nw=nextW(),today=new Date(),trainToday=isTrainDay(today),doneToday=sessionsOn(todayK()).length>0;
   const wk=weekPlanPreview();
-  h+=`<div class="week tweek">${wk.map(x=>`<div class="${x.k===todayK()?'sel':''} ${x.w?'on':''}"><span>${DAYS[x.d.getDay()][0]}</span><b>${x.done?'✅':x.w?'🏋️':'😴'}</b><small>${x.w?esc(x.w.name.split(' ')[0]):'Rest'}</small></div>`).join('')}</div>`;
+  h+=`<div class="week tweek">${wk.map(x=>`<div class="${x.k===todayK()?'sel':''} ${x.w?'on':''} ${x.sw?'swap':''}" ${!x.done&&(x.w||x.sw)?`data-restday="${x.k}" role="button" title="${x.sw?'Make it a training day again':'Make it a rest day'}"`:''}><span>${DAYS[x.d.getDay()][0]}</span><b>${x.done?'✅':x.w?'🏋️':'😴'}</b><small>${x.w?esc(x.w.name.split(' ')[0]):'Rest'}</small></div>`).join('')}</div><p class="meta" style="margin:-4px 0 10px;text-align:center">Tap a training day to make it a rest day (tap again to undo). Your cycle doesn’t move.</p>`;
   if(doneToday)h+=`<div class="card ok"><h2>✅ Today’s training is done</h2><p class="meta">Great work. Next up: <b>${nw?esc(nw.name):''}</b> on your next training day.</p></div>`;
-  else if(nw)h+=`<div class="card hero tnext"><div class="avatar">${trainToday?'🔥':'😴'}</div><div class="grow"><div class="meta">${trainToday?'Today’s workout':'Rest day. Next workout'}</div><div class="qt" style="font-size:20px">${esc(nw.name)}</div><div class="meta">${esc(nw.focus||'')} · ${nw.ex.length} exercises${nw.ex.filter(x=>progFor(x)?.type==='up').length?` · ⬆️ ${nw.ex.filter(x=>progFor(x)?.type==='up').length} ready for more weight`:''}</div></div></div>
-    <div class="row" style="margin-bottom:12px"><button class="btn" data-startw="${nw.id}">${trainToday?'▶ Start workout':'▶ Train anyway'}</button><button class="btn ghost" style="flex:0 0 auto" data-act="skipW">Skip ⏭</button></div>`;
+  else if(nw)h+=`<div class="card hero tnext"><div class="avatar">${trainToday?'🔥':'😴'}</div><div class="grow"><div class="meta">${trainToday?'Today’s workout':isRestSwap(today)?'Rest day (swapped). Next workout':'Rest day. Next workout'}</div><div class="qt" style="font-size:20px">${esc(nw.name)}</div><div class="meta">${esc(nw.focus||'')} · ${nw.ex.length} exercises${nw.ex.filter(x=>progFor(x)?.type==='up').length?` · ⬆️ ${nw.ex.filter(x=>progFor(x)?.type==='up').length} ready for more weight`:''}</div></div></div>
+    <div class="row" style="margin-bottom:12px"><button class="btn" data-startw="${nw.id}">${trainToday?'▶ Start workout':'▶ Train anyway'}</button><button class="btn ghost" style="flex:0 0 auto" data-act="skipW">Skip ⏭</button></div>
+    ${trainToday||isRestSwap(today)?`<button class="linkbtn" style="display:block;margin:-4px auto 12px" data-restday="${todayK()}">${trainToday?'😴 Make today a rest day (keeps my cycle)':'↩ Undo: make today a training day again'}</button>`:''}`;
   h+=`<div class="card"><div class="sec-h"><span>🔁 Rotation · ${T.mode==='cycle'?cycOn()+' on · '+(cycLen()-cycOn())+' off':T.days.length+' days/week'}</span><button class="pill" data-act="editTrain">✎ Edit program</button></div>
     ${T.plan.map((p,i)=>`<div class="li ${nw&&p.id===nw.id?'cur':''}"><span class="rnum">${i+1}</span><div class="grow"><b>${esc(p.name)}</b>${nw&&p.id===nw.id?' <span class="pill">next</span>':''}<div class="meta">${esc(p.focus||'')} · ${p.ex.map(e=>esc(e.name)).slice(0,3).join(', ')}${p.ex.length>3?'…':''}</div></div><button class="ib" data-startw="${p.id}" aria-label="Start ${esc(p.name)}">▶</button></div>`).join('')}
     <p class="meta mt">Your workouts go in order on your training days. A missed day doesn’t skip a workout; the rotation simply continues next time.</p>${T.mode==='cycle'?cycStatusHTML():''}</div>`;
   const recent=[...T.sessions].reverse().slice(0,8);
   h+=`<div class="card"><h2>📈 Recent sessions</h2>${recent.length?recent.map(s=>`<div class="li"><span>🏋️</span><div class="grow"><b>${esc(s.name)}</b>${s.prs?` <span class="pill">🏆 ${s.prs} PR</span>`:''}<div class="meta">${parse(s.date).toLocaleDateString(undefined,{weekday:'short',day:'numeric',month:'short'})} · ${s.dur} min · ${s.ex.reduce((t,e)=>t+e.sets.length,0)} sets${s.vol?` · ${s.vol.toLocaleString()} ${T.unit}`:''}</div></div></div>`).join(''):'<div class="empty">Your finished workouts will show here.</div>'}</div>`;
-  const prs={};T.sessions.forEach(s=>s.ex.forEach(e=>e.sets.forEach(x=>{if(+x.w>0&&(!prs[e.name]||+x.w>prs[e.name].w))prs[e.name]={w:+x.w,r:x.r,date:s.date}})));
+  const prs={};T.sessions.forEach(s=>s.ex.forEach(e=>e.sets.forEach(x=>{if(+x.w>0&&(!prs[e.name]||+x.w>prs[e.name].w))prs[e.name]={w:+x.w,r:x.r,t:x.t,date:s.date}})));
   const pk=Object.keys(prs);
-  if(pk.length)h+=`<div class="card"><h2>🏆 Personal records</h2>${pk.map(n=>`<div class="li"><div class="grow">${esc(n)}</div><b>${prs[n].w} ${T.unit}</b><span class="meta">× ${prs[n].r}</span></div>`).join('')}</div>`;
+  if(pk.length)h+=`<div class="card"><h2>🏆 Personal records</h2>${pk.map(n=>`<div class="li"><div class="grow">${esc(n)}</div><b>${prs[n].w} ${T.unit}</b><span class="meta">× ${prs[n].t!=null?fmtSec(prs[n].t):prs[n].r}</span></div>`).join('')}</div>`;
   box.innerHTML=h;
 }
 function renderTrainEdit(){
@@ -1788,7 +1921,9 @@ function renderTrainEdit(){
   T.plan.forEach((p,di)=>{
     h+=`<div class="card"><div class="row"><span class="rnum" style="flex:0 0 auto">${di+1}</span><input data-pe="${di}::name" value="${esc(p.name)}" placeholder="Workout name"></div>
       <input class="mt" data-pe="${di}::focus" value="${esc(p.focus||'')}" placeholder="Focus, e.g. Chest · Triceps">
-      ${p.ex.map((e,ei)=>`<div class="exrow"><input data-pe="${di}:${ei}:name" value="${esc(e.name)}" placeholder="Exercise"><div class="row"><label class="mini">Sets<input type="number" min="1" max="10" data-pe="${di}:${ei}:sets" value="${e.sets}"></label><label class="mini">Reps<input data-pe="${di}:${ei}:reps" value="${esc(e.reps)}"></label><label class="mini">Weight (${T.unit})<input type="number" inputmode="decimal" step="any" min="0" placeholder="—" data-pe="${di}:${ei}:w" value="${esc(e.w??'')}"></label><label class="mini">Rest<select data-pe="${di}:${ei}:rest">${[0,30,45,60,90,120,150,180,240].map(v=>`<option value="${v}" ${+e.rest===v?'selected':''}>${v?v>=60?Math.floor(v/60)+':'+pad(v%60):v+'s':'none'}</option>`).join('')}</select></label>
+      ${p.ex.map((e,ei)=>`<div class="exrow"><input data-pe="${di}:${ei}:name" value="${esc(e.name)}" placeholder="Exercise"><div class="row"><label class="mini">Sets<input type="number" min="1" max="10" data-pe="${di}:${ei}:sets" value="${e.sets}"></label><label class="mini">Type<select data-pe="${di}:${ei}:type"><option value="reps" ${isTimed(e)?'':'selected'}>🔢 Reps</option><option value="time" ${isTimed(e)?'selected':''}>⏱️ Timer</option></select></label>${isTimed(e)
+  ?`<label class="mini">Seconds<input type="number" inputmode="numeric" min="1" max="3600" data-pe="${di}:${ei}:secs" value="${+e.secs||30}"></label>`
+  :`<label class="mini">Reps<input data-pe="${di}:${ei}:reps" value="${esc(e.reps)}"></label>`}<label class="mini">Weight (${T.unit})<input type="number" inputmode="decimal" step="any" min="0" placeholder="—" data-pe="${di}:${ei}:w" value="${esc(e.w??'')}"></label><label class="mini">Rest<select data-pe="${di}:${ei}:rest">${[0,30,45,60,90,120,150,180,240].map(v=>`<option value="${v}" ${+e.rest===v?'selected':''}>${v?v>=60?Math.floor(v/60)+':'+pad(v%60):v+'s':'none'}</option>`).join('')}</select></label>
         <span class="exbtns"><button class="ib" data-exmove="${di}:${ei}:-1" aria-label="Up">↑</button><button class="ib" data-exmove="${di}:${ei}:1" aria-label="Down">↓</button><button class="ib" data-exdel="${di}:${ei}" aria-label="Delete">×</button></span></div></div>`).join('')}
       <div class="row mt"><button class="btn ghost" data-exadd="${di}">+ Exercise</button><button class="ib" style="flex:0 0 44px" data-daymove="${di}:-1">↑</button><button class="ib" style="flex:0 0 44px" data-daymove="${di}:1">↓</button><button class="btn danger" style="flex:0 0 auto" data-daydel="${di}">Delete day</button></div></div>`;
   });
@@ -1796,6 +1931,10 @@ function renderTrainEdit(){
   $('#trainBody').innerHTML=h;
 }
 
+document.addEventListener('click',e=>{if(!S)return;const el=e.target.closest('[data-restday]');if(!el)return;
+  e.preventDefault();toggleRestDay(el.dataset.restday);
+  if(TEDIT){const pv=$('#tPrev'),nw=$('#cycNow');if(pv)pv.innerHTML=tPrevHTML();if(nw)nw.textContent=cycNowText()}else render();
+});
 document.addEventListener('click',e=>{if(!S)return;const el=e.target.closest('[data-tmode]');if(!el)return;
   e.preventDefault();const T=T_();T.mode=el.dataset.tmode;if(T.mode==='cycle'&&!cyc().start)cyc().start=todayK();
   syncTrainRoutine();save();renderTrain();
@@ -2200,7 +2339,7 @@ function periodStats(days){
     if(st.total&&st.done===st.total)P.perfect++;if(st.total&&st.done/st.total>=.5)P.good++;
     if(st.total&&(!P.best||st.pct>P.best.pct))P.best={d,pct:st.pct};
     S.routines.forEach(r=>{if(!isDue(r,d))return;const dn=isDone(r.id,d),o=P.per[r.id]=P.per[r.id]||{r,due:0,dn:0},c=P.cat[r.cat]=P.cat[r.cat]||{due:0,dn:0};o.due++;c.due++;if(dn){o.dn++;c.dn++}});
-    if(S.settings.prayers){const n=prayedCount(d),c=P.cat.prayer=P.cat.prayer||{due:0,dn:0};P.prDue+=5;P.pr+=n;if(n===5)P.pr5++;c.due+=5;c.dn+=n}
+    if(prayersDue(d)){const n=prayedCount(d),c=P.cat.prayer=P.cat.prayer||{due:0,dn:0};P.prDue+=5;P.pr+=n;if(n===5)P.pr5++;c.due+=5;c.dn+=n}
     dosesOn(d).forEach(x=>{const c=P.cat.meds=P.cat.meds||{due:0,dn:0};c.due++;if(isDone(x.id,d))c.dn++});
   });
   const ks=new Set(days.map(key)),L=S.logs.filter(l=>ks.has(l.date)),sum=(t,f)=>L.filter(l=>l.type===t).reduce((a,l)=>a+(f?(+l[f]||0):1),0);
@@ -2263,8 +2402,8 @@ const sumLogs=(days,type,f)=>{const ks=new Set(days.map(key));return S.logs.filt
 const fmtN=n=>(+n).toLocaleString(undefined,{maximumFractionDigits:1});
 
 const DAILY=[
-  {id:'pray5',icon:'🕌',t:'Pray all 5 prayers',xp:50,ok:()=>S.settings.prayers,p:d=>[prayedCount(d),5]},
-  {id:'fajr',icon:'🌅',t:'Start strong: pray Fajr',xp:20,ok:()=>S.settings.prayers,p:d=>[+isDone('prayer:Fajr',d),1]},
+  {id:'pray5',icon:'🕌',t:'Pray all 5 prayers',xp:50,ok:d=>prayersDue(d||new Date()),p:d=>[prayedCount(d),5]},
+  {id:'fajr',icon:'🌅',t:'Start strong: pray Fajr',xp:20,ok:d=>prayersDue(d||new Date()),p:d=>[+isDone('prayer:Fajr',d),1]},
   {id:'skin',icon:'🧴',t:'Glow up: finish all skin care',xp:30,ok:d=>catDue(d,'skincare').length>0,p:d=>[catDone(d,'skincare'),catDue(d,'skincare').length]},
   {id:'move',icon:'💪',t:'Move your body: log a run or workout',xp:40,ok:()=>true,p:d=>[Math.min(1,logsOn(key(d),'run').length+logsOn(key(d),'workout').length),1]},
   {id:'pages',icon:'📖',t:'Read 20 pages (log them)',xp:30,ok:()=>true,p:d=>[Math.min(20,logsOn(key(d),'read').reduce((a,l)=>a+(+l.pages||0),0)),20]},
@@ -2282,13 +2421,13 @@ const WEEKLY=[
   {id:'km15',icon:'🏃',t:'Run 15 km this week',xp:150,ok:()=>true,p:ds=>[Math.min(15,+sumLogs(ds,'run','km').toFixed(1)),15]},
   {id:'wo3',icon:'🏋️',t:'Complete 3 workouts',xp:150,ok:()=>true,p:ds=>[Math.min(3,Math.max(sumLogs(ds,'workout'),ds.reduce((a,d)=>a+catDone(d,'exercise'),0))),3]},
   {id:'pg100',icon:'📚',t:'Read 100 pages',xp:120,ok:()=>true,p:ds=>[Math.min(100,sumLogs(ds,'read','pages')),100]},
-  {id:'pray5d',icon:'🕌',t:'All 5 prayers on 5 days',xp:200,ok:()=>S.settings.prayers,p:ds=>[Math.min(5,ds.filter(d=>prayedCount(d)===5).length),5]},
+  {id:'pray5d',icon:'🕌',t:'All 5 prayers on 5 days',xp:200,ok:()=>S.settings.prayers,p:ds=>{const n=Math.max(1,Math.min(5,ds.filter(d=>prayersDue(d)).length));return [Math.min(n,ds.filter(d=>prayersDue(d)&&prayedCount(d)===5).length),n]}},
   {id:'perf2',icon:'🌟',t:'Have 2 perfect days',xp:200,ok:()=>true,p:ds=>[Math.min(2,ds.filter(isPerfect).length),2]},
   {id:'skin',icon:'✨',t:'Never skip skin care this week',xp:150,ok:()=>S.routines.some(r=>r.cat==='skincare'),p:ds=>{const due=ds.filter(d=>catDue(d,'skincare').length);return [due.filter(d=>catDone(d,'skincare')===catDue(d,'skincare').length).length,due.length]}},
   {id:'lang90',lang:1,icon:'🌍',t:'Practice your language 90 min',xp:150,ok:langOn,p:ds=>[Math.min(90,ds.reduce((a,d)=>a+langMinOn(key(d)),0)),90]},
   {id:'words25',lang:1,icon:'📇',t:'Add 25 new words',xp:120,ok:langOn,p:ds=>{const ks=new Set(ds.map(key));return [Math.min(25,S.lang.deck.filter(c=>ks.has(c.added)).length),25]}},
   {id:'rev100',lang:1,icon:'🧠',t:'Review 100 flashcards',xp:120,ok:()=>S.lang.deck.length>0,p:ds=>[Math.min(100,ds.reduce((a,d)=>a+(S.lang.reviews[key(d)]||0),0)),100]},
-  {id:'train5',icon:'🏋️',t:'Finish every training day this week',xp:200,ok:()=>T_().plan.length>0&&(T_().mode==='cycle'||T_().days.length>0),p:ds=>{const wk=new Set(ds.map(key)),n=new Set(T_().sessions.filter(x=>wk.has(x.date)).map(x=>x.date)).size,tgt=T_().mode==='cycle'?Math.max(1,ds.filter(d=>isTrainDay(d)).length):T_().days.length;return [Math.min(n,tgt),tgt]}},
+  {id:'train5',icon:'🏋️',t:'Finish every training day this week',xp:200,ok:()=>T_().plan.length>0&&(T_().mode==='cycle'||T_().days.length>0),p:ds=>{const wk=new Set(ds.map(key)),n=new Set(T_().sessions.filter(x=>wk.has(x.date)).map(x=>x.date)).size,tgt=Math.max(1,ds.filter(d=>isTrainDay(d)).length);return [Math.min(n,tgt),tgt]}},
   {id:'meds7',icon:'💊',t:'Every dose, every day this week',xp:150,ok:()=>(S.meds||[]).some(m=>m.active!==false),p:ds=>{const days=ds.filter(d=>dosesOn(d).length);return [days.filter(d=>dosesOn(d).every(x=>isDone(x.id,d))).length,days.length]}},
   {id:'todo15',icon:'✅',t:'Complete 15 to-dos',xp:120,ok:()=>S.todos.items.length>0,p:ds=>{const ks=new Set(ds.map(key));return [Math.min(15,S.todos.items.filter(i=>i.done&&ks.has(i.doneAt)).length),15]}},
   {id:'meal14',icon:'🍽️',t:'Log 14 meals',xp:100,ok:()=>true,p:ds=>[Math.min(14,sumLogs(ds,'meal')),14]},

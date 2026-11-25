@@ -194,6 +194,7 @@ nav.tabs button{font-size:10.5px}
 /* train */
 .tweek div{border:1px solid var(--line);background:var(--card);border-radius:12px;padding:6px 0;font-size:12px;display:flex;flex-direction:column;align-items:center;gap:1px}
 .tweek div.sel{border-color:var(--acc);background:var(--acc2)}
+.tweek [data-restday],.tprev [data-restday]{cursor:pointer}.tweek div.swap,.tprev div.swap{border-style:dashed;opacity:.8}
 .tweek b{font-size:17px;font-weight:400}.tweek small{font-size:10px;color:var(--mute);max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;padding:0 2px}
 .rnum{width:28px;height:28px;border-radius:50%;background:var(--acc2);color:var(--acc);display:grid;place-items:center;font-weight:800;font-size:13px;flex:none}
 .li.cur{background:var(--acc2);border-radius:12px;padding-inline:8px}
@@ -206,6 +207,7 @@ nav.tabs button{font-size:10.5px}
 .chkbtn{height:40px;border-radius:10px;border:2px solid var(--line);background:var(--card);color:transparent;font-size:18px;font-weight:800;cursor:pointer}
 .srow.done .chkbtn{background:var(--acc);border-color:var(--acc);color:#fff}
 .srow.done input{background:var(--acc2)}
+.tbtn{color:var(--ink);font-size:14px}.srow.done .tbtn{color:#fff}.srow.run .tbtn{background:var(--acc2);border-color:var(--acc);color:var(--acc);font-variant-numeric:tabular-nums}
 .exrow{border-top:1px solid var(--line);padding-top:10px;margin-top:10px}
 .exrow .row{align-items:flex-end;margin-top:6px;flex-wrap:wrap}
 label.mini{font-size:11px;color:var(--mute);display:flex;flex-direction:column;gap:3px;flex:1;min-width:60px}
@@ -362,6 +364,9 @@ label.mini input,label.mini select{padding:8px 6px}
 .cal-d{aspect-ratio:1;border:1px solid var(--line);border-radius:8px;font:inherit;font-size:12px;font-weight:600;color:var(--ink);cursor:pointer;padding:0}
 .cal-d:disabled{color:var(--mute);cursor:default;border-style:dashed}
 .cal-d.today{outline:2px solid var(--acc);outline-offset:1px}
+.cycal .cal-d{background:var(--card);aspect-ratio:auto;height:40px}
+.cycal .cal-d.per{background:#ff7a9c;border-color:#ff7a9c;color:#fff}.cycal .cal-d.pred{border:2px dashed #ff7a9c}
+.cylg{display:inline-block;width:10px;height:10px;border-radius:3px;vertical-align:middle}.cylg.per{background:#ff7a9c}.cylg.pred{border:2px dashed #ff7a9c}
 .legend{display:flex;align-items:center;gap:4px;justify-content:flex-end;margin-top:8px}.legend i{width:14px;height:14px;border-radius:4px;display:inline-block}
 </style>
 </head>
@@ -449,6 +454,12 @@ label.mini input,label.mini select{padding:8px 6px}
     <div id="medsBody"></div>
   </section>
 
+  <!-- CYCLE -->
+  <section id="v-cycle" class="hidden">
+    <div class="top"><h1>🌸 Cycle</h1></div>
+    <div id="cycleBody"></div>
+  </section>
+
   <!-- LEARN -->
   <section id="v-learn" class="hidden">
     <div class="top"><h1>Learn</h1></div>
@@ -492,6 +503,7 @@ label.mini input,label.mini select{padding:8px 6px}
     <div class="menu">
       <button data-act="goRoutines"><b>🔁</b>Routines<small>daily · weekly · monthly</small></button>
       <button data-act="goMeds"><b>💊</b>Medications<small>doses · refills</small></button>
+      <button data-act="goCycle"><b>🌸</b>Cycle<small>period · pauses prayers</small></button>
       <button data-act="goLog"><b>📝</b>Log<small>runs · reading · meals</small></button>
       <button data-act="goProgress"><b>📈</b>Progress<small>week · month</small></button>
       <button data-act="goMoney"><b>💰</b>Money<small>spending · wishlist</small></button>
@@ -501,7 +513,8 @@ label.mini input,label.mini select{padding:8px 6px}
     <div class="card" id="nudgeBox"></div>
     <form class="card" id="setForm">
       <h2>🕌 Prayer times</h2>
-      <label style="display:flex;gap:8px;align-items:center"><input type="checkbox" name="prayers"> Show the 5 daily prayers on Today</label>
+      <label style="display:flex;gap:8px;align-items:center"><input type="checkbox" name="prayers"> Add the 5 daily prayers to Today</label>
+      <p class="meta">Off by default. Turn it on to track Fajr to Isha. Women can use 🌸 Cycle to pause them on period days.</p>
       <div class="row"><div><label class="f">City</label><input name="city"></div><div><label class="f">Country</label><input name="country"></div></div>
       <label class="f">Calculation method (match your prayer app)</label>
       <select name="method">

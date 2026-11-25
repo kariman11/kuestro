@@ -47,6 +47,8 @@ Add your prayer app under **Connect → App shortcuts**, then pick it under **Pr
 
 Set the same calculation method in **Settings** so the times match your app. "Add this month's prayer times to my calendar" gives you an alert for each prayer.
 
+The 5 daily prayers are **off by default**. Turn them on under **More → Prayer times → Add the 5 daily prayers to Today**. New installs also start without the adhkar and Quran routines; add them under **Routines** if you want them.
+
 ## 7. Claude / ChatGPT coach
 In the **Log** tab, write your workout plan and tap **Ask Claude** or **Ask ChatGPT**.
 - With no keys, it copies your plan plus 4 weeks of training and health data, then opens the Claude or ChatGPT app.
@@ -209,5 +211,20 @@ The **📝 Logged** card was removed from Today (your logs are still in *More �
 You don't have to train on fixed weekdays. Pick how you train:
 - **📅 Specific weekdays**: tick the days of the week (the original way).
 - **🔁 Rotating cycle**: train **N days**, then rest **M days**, and repeat, no matter which weekday it is (for example 5 on, 1 off). Set the numbers and the **first training day of the current cycle** (or tap **Today**). The screen shows "Today is training day 3 of 5" and a strip of your **next 14 days** (🏋️ training, 😴 rest) so you can check it.
-- On the Train screen, **↺ Today is day 1 of my cycle** restarts the cycle from today, and **😴 Skip today** pushes the whole cycle back a day when you miss a session, so the rhythm carries on from where you left off.
+- On the Train screen, **↺ Today is day 1 of my cycle** restarts the cycle from today, and **⏩ Skip today** pushes the whole cycle back a day when you miss a session, so the rhythm carries on from where you left off.
+- **😴 Make any day a rest day (keeps your cycle)**: tap a training day in the week strip on the Train screen (or in the 14-day preview in *Edit program*), or tap **Make today a rest day** under today's workout. Only that date changes: the cycle does not shift, the next workout simply moves to your next training day, and your Training session streak is not broken. Swapped days show with a dashed border; tap again to undo. Works for both weekday and rotating schedules. Use **⏩ Skip today** only when you want the whole cycle to move back a day.
 - Today's "Training session" routine, the week strip, the training quests, the AI coach and the calendar export (next 60 days) all follow your cycle. The workouts (Push, Pull, Legs…) still rotate in order on your training days.
+
+## 🌸 Cycle tracker (More → Cycle)
+- Turn on cycle tracking, then tap **🌸 My period started today** (on the Cycle page, or under the prayers on Today) and **✓ My period ended today** when it's over.
+- On period days the 5 prayers are **paused**: Today shows "Period day N" instead of the prayer list, and those days don't count in your streaks, perfect days, prayer quests or progress. You can switch this off in the Cycle settings.
+- The page shows your cycle day, the expected date of your next period (or how late it is), a month calendar (period days filled, predicted days dashed) and your average cycle and period length.
+- Tap a past day on the calendar to log a period that started then, or to end the one in progress. Edit or delete any period in **History**, or add a past one by its dates.
+- Until you've logged a few cycles, predictions use your usual cycle and period length (28 and 5 days by default). A period you forget to end stops counting after 15 days.
+- Everything stays on your device, encrypted if you've set a passcode.
+
+## ⏱️ Timed exercises (Train → Edit program)
+- Each exercise has a **Type**: **🔢 Reps** (sets × reps, as before) or **⏱️ Timer** (sets × seconds, e.g. plank 3 × 45s). Pick Timer and set the seconds per set.
+- During the workout a timed set shows a **▶** button: tap it to start the countdown. When the time is up it beeps/vibrates, ticks the set and starts your rest timer. Tap the countdown to stop early; the set saves the time you actually held. Tap ✓ to undo.
+- You can still enter a weight (for a weighted plank or a farmer's carry). "Last time" and your history show timed sets as seconds, e.g. `10×45s`.
+- The default program's **Plank** is now a timed exercise.
