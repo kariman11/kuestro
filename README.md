@@ -228,3 +228,12 @@ You don't have to train on fixed weekdays. Pick how you train:
 - During the workout a timed set shows a **▶** button: tap it to start the countdown. When the time is up it beeps/vibrates, ticks the set and starts your rest timer. Tap the countdown to stop early; the set saves the time you actually held. Tap ✓ to undo.
 - You can still enter a weight (for a weighted plank or a farmer's carry). "Last time" and your history show timed sets as seconds, e.g. `10×45s`.
 - The default program's **Plank** is now a timed exercise.
+
+## 🦉 Duolingo button
+**Open Duolingo** (Learn tab and the language card on Today) opens the **Duolingo app** when it's installed on your phone, and the Duolingo website when it isn't. On a computer it opens the website. If you set your own link (for example an iPhone Shortcut), that link is used as is.
+
+## 📩 Bank SMS straight into Money (Android)
+Phones don't let web apps read your SMS inbox, so a free automation app does the reading. In **MacroDroid** (or Tasker): trigger **SMS received** (from your bank) → action **Open website** with your Kuestro link followed by `?sms=` and the message text, URL-encoded (MacroDroid: `{sms_message}`). Copy the exact link from **Money → How to get bank messages in automatically**. Each message is read and added by itself, with a short "−EGP 250 · Carrefour added" note; a message that's already in is skipped. Sharing a message to Kuestro, pasting, and the iPhone file method still work.
+
+## 💻 Install on your computer
+On a computer, Kuestro shows an **⬇️ Install Kuestro on this computer** button (top right on wide screens, above Today on narrow ones). In Chrome or Edge one click installs it: you get a desktop and Start-menu shortcut and it opens in its own window. Safari and Firefox show how to do it there. The button disappears once Kuestro is installed and never shows on phones.

@@ -207,7 +207,7 @@ function renderToday(){
   const rItem=r=>{const s=streak(r),lt=LOGFOR[r.cat];
     const meta=[fmtTime(r.time),r.note?esc(r.note):'',s>1?`🔥 ${s}`:''].filter(Boolean).join(' · ');
     return itemHTML(r.id,r.name,r.link==='train'&&nextW()?[meta,'Next: '+esc(nextW().name)].filter(Boolean).join(' · '):meta,isDone(r.id,d),r.link==='water'?`<span class="meta">${wL(wTotal(k))} / ${wL(wData().goal)}</span>`:r.link==='train'?`<button class="pill" data-act="goTrain">▶ Train</button>`:lt?`<button class="pill" data-log="${lt}">+ log</button>`:'')};
-  const catCard=c=>{const extra=c==='language'?`<span style="display:flex;gap:6px"><a class="pill" ${linkAttrs(S.lang.duoUrl)}>🦉 Duolingo</a><button class="pill" data-act="goLearn">🧠 ${dueCards().length}</button></span>`:'';
+  const catCard=c=>{const extra=c==='language'?`<span style="display:flex;gap:6px"><a class="pill" data-duo ${linkAttrs(S.lang.duoUrl)}>🦉 Duolingo</a><button class="pill" data-act="goLearn">🧠 ${dueCards().length}</button></span>`:'';
     return `<div class="card"><div class="sec-h"><span>${CATS[c][0]} ${c==='language'?esc(S.lang.name):CATS[c][1]}</span>${extra}</div>${groups[c].map(rItem).join('')}</div>`};
   let h='';
   if(isToday)h+=nudgeBannerHTML()+cardOfDayHTML();
@@ -1020,6 +1020,7 @@ document.addEventListener('click',async e=>{
     case 'mAdd':MADD=!MADD;IMPORT=null;return renderMoney();
     case 'smsClip':try{const t=await navigator.clipboard.readText();if(!t)return toast('Clipboard is empty');doParse(t)}catch(err){toast('Paste into the box instead (long-press → Paste)')}return;
     case 'smsParse':return doParse($('#smsText').value);
+    case 'smsCopyLink':try{await navigator.clipboard.writeText(smsLink());toast('Link copied ✓')}catch(err){toast('Long-press the link to copy it')}return;
     case 'smsSave':{let n=0;IMPORT.parsed.forEach(p=>{if(!p.dup&&!p.skip){addTx(p,'sms');n++}});IMPORT=null;save();renderMoney();return toast(`Imported ${n} transaction${n===1?'':'s'} ✓`)}
     case 'tLogShop':{const L=tlist(TL),done=S.todos.items.filter(i=>i.list===TL&&i.done),est=done.reduce((a,i)=>a+(+i.price||0)*(parseFloat(i.qty)||1),0);
       const v=parseFloat(prompt(`How much did you spend? (${S.money.cur})`,est?String(Math.round(est*100)/100):''));if(!(v>0))return;
@@ -1286,7 +1287,7 @@ function renderLearn(){
   if(!L.chosen)h+=`<div class="card warn"><h2>👋 Which language are you learning?</h2>${langSetForm()}</div>`;
   h+=`<div class="card hero"><div class="avatar">🗣️</div><div class="grow"><div class="sec-h"><span>${esc(L.name)} · ${esc(L.level.split(' ')[0])}</span>${lastDuo?`<span class="meta">🦉 ${esc(lastDuo.duoStreak)}-day streak</span>`:''}</div>
     <div class="bar xp"><i style="width:${Math.min(100,Math.round(mins/L.goal*100))}%"></i></div><div class="meta">${mins} / ${L.goal} min today · ${total} words · ${mature} mastered</div></div></div>`;
-  h+=`<div class="row" style="margin-bottom:12px"><a class="btn" ${linkAttrs(L.duoUrl)}>🦉 Open Duolingo</a><button class="btn ${due?'':'ghost'}" data-act="rvStart" ${due?'':'disabled'}>🧠 Review ${due} word${due===1?'':'s'}</button></div>`;
+  h+=`<div class="row" style="margin-bottom:12px"><a class="btn" data-duo ${linkAttrs(L.duoUrl)}>🦉 Open Duolingo</a><button class="btn ${due?'':'ghost'}" data-act="rvStart" ${due?'':'disabled'}>🧠 Review ${due} word${due===1?'':'s'}</button></div>`;
   h+=`<form class="card" id="fLang"><h2>✅ Log practice</h2><div class="chips">${ACTS.map((a,i)=>`<label><input type="radio" name="act" value="${a}" ${i===0?'checked':''}><span>${a}</span></label>`).join('')}</div>
     <div class="row mt"><div><label class="f">Minutes</label><input name="min" type="number" min="1" inputmode="numeric" value="15"></div>
     <div class="duoOnly"><label class="f">Duolingo XP</label><input name="duoXp" type="number" min="0" inputmode="numeric" placeholder="optional"></div>
@@ -2216,7 +2217,7 @@ function parseSMS(raw){
   const mm=t.match(/\b(?:at|@|to|from)\s+([A-Za-z0-9&'.\-* ]{2,40}?)(?=\s+(?:on|at|dated|with|via|using|for|ref|card|from|your|\d{1,2}[\/\-.]\d)|[.,;]|$)/i)
     ||t.match(/(?:لدى|لدي|عند|إلى|الى|لصالح|من)\s+([^\d.,،:]{2,30}?)(?=\s+(?:بتاريخ|يوم|في|بطاقة|رصيد|المتاح|الساعة|من|عن)|[.,،]|$)/);
   if(mm)merchant=mm[1].replace(/\*+/g,' ').replace(/\s+/g,' ').trim();
-  if(/^(your|you|the|card|account|حسابك|بطاقتك)$/i.test(merchant))merchant='';
+  if(/^(your|you|the|card|account|حسابك|بطاقتك)(\s|$)/i.test(merchant))merchant='';
   let date=todayK();
   const iso=t.match(/\b(20\d{2})-(\d{1,2})-(\d{1,2})\b/),dm=t.match(/\b(\d{1,2})[\/\-.](\d{1,2})[\/\-.](\d{2,4})\b/);
   if(iso)date=`${iso[1]}-${pad(+iso[2])}-${pad(+iso[3])}`;
@@ -2263,7 +2264,9 @@ function renderMoney(){
     return head+`<div class="txrow"><span class="ce">${(MCATS[x.cat]||MCATS.other)[0]}</span><div class="grow"><div>${esc(x.merchant||(MCATS[x.cat]||MCATS.other)[1])}</div><select class="txcat" data-txcat="${x.id}">${catOpts(x.cat)}</select></div><b class="${x.type==='income'?'pos':''}">${x.type==='income'?'+':'−'}${fmtMoney(x.amount,x.cur)}</b><button class="tb2" data-txdel="${x.id}" aria-label="Delete">×</button></div>`}).join('')+`</div>`}
   else if(!IMPORT)h+=`<div class="empty">No transactions in ${label} yet.<br>Import your bank SMS or add one manually.</div>`;
   h+=`<div class="card"><details><summary style="margin:0">📱 How to get bank messages in automatically</summary><ol class="meta">
-    <li><b>Android:</b> install Kuestro from Chrome (⋮ → Install app). Then long-press any bank SMS → <b>Share</b> → <b>Kuestro</b>. It opens ready to import.</li>
+    <li><b>Android, fully automatic:</b> phones don’t let web apps read your SMS inbox, so a free automation app does it for you. In <b>MacroDroid</b> (or Tasker): trigger <b>SMS received</b> from your bank → action <b>Open website</b> with this link followed by the message text (MacroDroid: <code>{sms_message}</code>, URL-encoded). Each bank SMS then lands in Money by itself; duplicates are skipped.
+      <div class="row mt"><input readonly data-selectall value="${esc(smsLink())}"><button class="pill" style="flex:0 0 auto" data-act="smsCopyLink">📋 Copy</button></div></li>
+    <li><b>Android, by hand:</b> install Kuestro from Chrome (⋮ → Install app). Then long-press any bank SMS → <b>Share</b> → <b>Kuestro</b>. It opens ready to import.</li>
     <li><b>iPhone:</b> Shortcuts → <b>Automation</b> → + → <b>Message</b> → Sender = your bank (or Message contains “EGP”) → <b>Run Immediately</b>. Action: <b>Append to Text File</b> (Shortcut Input → file “bank.txt” in iCloud Drive). Once in a while, tap <b>Import bank SMS → Open file</b> and pick bank.txt. Duplicates are skipped.</li>
     <li><b>Any phone:</b> copy one or many messages, then tap <b>Paste from clipboard</b>.</li>
     <li>Change a category once and Kuestro remembers it for that shop next time.</li></ol></details>
@@ -2597,14 +2600,58 @@ function start(){
     Object.assign(r,{name:'Training session',link:'train',freq:'weekly',note:'Your rotation is in the Train tab'});S.train.seeded=true;syncTrainRoutine();save();
   }
   checkProgress();nudgeTick();
+  if(pendingSms){const t=pendingSms;pendingSms=null;view='money';autoImportSms(t);return}
   if(pendingShare){const t=pendingShare;pendingShare=null;view='money';MV='spend';show('money');doParse(t);return}
   show(view);
   if(pendingCode){const c=pendingCode;pendingCode=null;if(S.strava.clientSecret)stravaExchange(c);else toast('Strava: set up your Client ID and Secret first')}
   else if(S.strava.refresh&&Date.now()-S.strava.lastSync>3600e3)stravaSync(true);
 }
-let pendingShare=null;
+let pendingShare=null,pendingSms=null;
+/* ---------- Duolingo: open the app when it's installed, the website when it isn't ---------- */
+const IS_ANDROID=/Android/i.test(navigator.userAgent),IS_IOS=/iPhone|iPad|iPod/i.test(navigator.userAgent)||(navigator.platform==='MacIntel'&&navigator.maxTouchPoints>1);
+function openDuolingo(url){
+  let u;try{u=new URL(url)}catch(e){return false}
+  if(!/(^|\.)duolingo\.com$/i.test(u.hostname))return false;          // a custom link (e.g. an iPhone Shortcut): open it as is
+  if(IS_ANDROID){   // Chrome opens the app if it's installed, otherwise the fallback website
+    location.href=`intent://${u.host}${u.pathname}${u.search}#Intent;scheme=https;package=com.duolingo;S.browser_fallback_url=${encodeURIComponent(u.href)};end`;return true}
+  if(IS_IOS){       // try the app; if the page is still showing a moment later, the app isn't there
+    let left=false;const gone=()=>{if(document.hidden)left=true};document.addEventListener('visibilitychange',gone);
+    setTimeout(()=>{document.removeEventListener('visibilitychange',gone);if(!left&&!document.hidden)window.open(u.href,'_blank','noopener')},1600);
+    location.href='duolingo://';return true}
+  return false;     // computer: the website, in a new tab
+}
+document.addEventListener('click',e=>{const a=e.target.closest&&e.target.closest('a[data-duo]');if(!a)return;if(openDuolingo(a.getAttribute('href')))e.preventDefault()});
+/* ---------- Bank SMS sent in by a phone automation: ?sms=<message text> ---------- */
+const smsLink=()=>location.origin+location.pathname+'?sms=';
+document.addEventListener('focusin',e=>{if(e.target.matches&&e.target.matches('input[data-selectall]'))e.target.select()});
+function autoImportSms(text){
+  const hs=new Set(S.money.tx.map(x=>x.h)),all=parseMany(text),fresh=all.filter(p=>!hs.has(txHash(p)));
+  MV='spend';IMPORT=null;show('money');
+  if(!all.length){doParse(text);return toast('Couldn’t read a transaction. Check it below')}
+  fresh.forEach(p=>addTx(p,'sms'));save();renderMoney();
+  toast(fresh.length?fresh.length===1?`💳 ${fresh[0].type==='income'?'+':'−'}${fmtMoney(fresh[0].amount,normCur(fresh[0].cur))}${fresh[0].merchant?' · '+fresh[0].merchant:''} added`:`💳 ${fresh.length} transactions added`:'Already imported ✓');
+}
+/* ---------- Desktop: a visible "Install" button (creates the desktop shortcut) ---------- */
+let INSTALL_EVT=null;
+const IS_MOBILE=/Android|iPhone|iPad|iPod|Mobi/i.test(navigator.userAgent)||(navigator.platform==='MacIntel'&&navigator.maxTouchPoints>1);
+const IS_STANDALONE=()=>matchMedia('(display-mode: standalone)').matches||matchMedia('(display-mode: window-controls-overlay)').matches||navigator.standalone===true;
+function installUI(){const bar=document.getElementById('installBar');if(!bar)return;
+  const show=!IS_MOBILE&&!IS_STANDALONE()&&(INSTALL_EVT||!('onbeforeinstallprompt' in window));   // Chrome/Edge: only once installable; other browsers: instructions
+  bar.classList.toggle('hidden',!show)}
+window.addEventListener('beforeinstallprompt',e=>{e.preventDefault();INSTALL_EVT=e;installUI()});
+window.addEventListener('appinstalled',()=>{INSTALL_EVT=null;installUI();toast('✅ Kuestro is installed. Open it from your desktop or Start menu')});
+async function installApp(){
+  if(INSTALL_EVT){const e=INSTALL_EVT;INSTALL_EVT=null;e.prompt();const r=await e.userChoice.catch(()=>null);if(!r||r.outcome!=='accepted')INSTALL_EVT=e;installUI();return}
+  const ua=navigator.userAgent;
+  alert(/Firefox/i.test(ua)?'Firefox can’t install web apps. Open Kuestro in Chrome or Edge and click Install there.'
+    :/Safari/i.test(ua)&&!/Chrome|Edg/i.test(ua)?'In Safari: File → Add to Dock. Kuestro then opens like an app from your Dock and Launchpad.'
+    :'Use the install icon at the right end of the address bar (or the browser menu → Install Kuestro).');
+}
+document.addEventListener('click',e=>{if(e.target.closest&&e.target.closest('#installBtn')){e.preventDefault();installApp()}});
+document.addEventListener('DOMContentLoaded',installUI);installUI();
 function boot(){
   const q=new URLSearchParams(location.search);
+  if(q.has('sms')){pendingSms=q.get('sms');history.replaceState(null,'',location.pathname)}
   if(q.has('text')||q.has('title')){pendingShare=[q.get('title'),q.get('text'),q.get('url')].filter(Boolean).join('\n');history.replaceState(null,'',location.pathname)}
   if(q.has('code')||q.has('error')){
     history.replaceState(null,'',location.pathname);

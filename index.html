@@ -25,6 +25,8 @@
 *{box-sizing:border-box}
 html,body{margin:0;background:var(--bg);color:var(--ink);font:16px/1.4 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;-webkit-tap-highlight-color:transparent}
 main{max-width:640px;margin:0 auto;padding:calc(env(safe-area-inset-top) + 14px) 16px calc(92px + env(safe-area-inset-bottom))}
+.installbar{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:12px}.installbar.hidden{display:none}.installbar .btn{flex:0 0 auto}
+@media (min-width:1000px){.installbar{position:fixed;top:16px;right:20px;z-index:50;margin:0;flex-direction:column;align-items:flex-end;gap:4px}.installbar .meta{font-size:11px}}
 .top{display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:12px}
 h1{font-size:27px;margin:0;letter-spacing:-.02em}
 h2{font-size:17px;margin:0 0 8px}
@@ -393,6 +395,7 @@ label.mini input,label.mini select{padding:8px 6px}
 </div>
 
 <main>
+  <div id="installBar" class="installbar hidden"><button id="installBtn" class="btn">⬇️ Install Kuestro on this computer</button><span class="meta">Adds a desktop shortcut and opens in its own window</span></div>
   <!-- TODAY -->
   <section id="v-today">
     <div class="top">
