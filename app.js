@@ -844,7 +844,12 @@ const SUBMIT={
   fWish(f){const n=f.name.value.trim();if(!n)return;let link=f.link.value.trim();if(link&&!/^https?:/i.test(link))link='https://'+link;if(BAD_SCHEME.test(link))link='';
     S.money.wish.push({id:uid(),name:n,price:+f.price.value||0,prio:+f.prio.value||2,link,saved:0,bought:false,created:todayK()});save();renderMoney();toast('Added to wishlist 🎁')},
   fTodo(f){const lid=f.l?f.l.value:TL,it=addTodo(lid,f.t.value,TL==='today'?todayK():'');if(!it)return;save();renderTodos();setTimeout(()=>$('#fTodo')?.t.focus(),30)},
-  fTodoQ(f){const it=addTodo(f.l.value,f.t.value,(tlist(f.l.value)||{}).kind==='groceries'?'':todayK());if(!it)return;save();renderToday();toast('Added ✓')},
+  fTList(f){const n=f.name.value.trim().slice(0,30);if(!n)return toast('Give the list a name');const icon=(f.icon.value.trim()||'📝').slice(0,4),kind=LKINDS[f.kind.value]?f.kind.value:'custom';
+    let l=TLFORM==='new'?null:tlist(TLFORM);
+    if(l){const was=l.kind;Object.assign(l,{name:n,icon,kind});if(kind==='monthly'&&was!=='monthly')l.month=todayK().slice(0,7)}
+    else{l={id:uid(),name:n,icon,kind};if(kind==='monthly')l.month=todayK().slice(0,7);S.todos.lists.push(l)}
+    TL=l.id;TLFORM=null;save();renderTodos();toast('Saved ✓')},
+  fTodoQ(f){const it=addTodo(f.l.value,f.t.value,lkind(tlist(f.l.value))==='custom'?todayK():'');if(!it)return;save();renderToday();toast('Added ✓')},
   mForm(f){
     const times=[...f.querySelectorAll('[name=mtime]')].map(i=>i.value).filter(Boolean).sort();
     const data={name:f.name.value.trim(),dose:f.dose.value.trim(),form:f.form.value,freq:f.freq.value,days:[...f.querySelectorAll('[name=mdays]:checked')].map(c=>+c.value),every:Math.max(2,+f.every.value||2),
@@ -950,7 +955,8 @@ document.addEventListener('click',async e=>{
   if(el=c('[data-tdue]')){const it=S.todos.items.find(i=>i.id===el.dataset.tdue),t0=todayK(),t1=key(addDays(new Date(),1)),t7=key(addDays(new Date(),7));
     it.due=!it.due||it.due<t0?t0:it.due===t0?t1:it.due===t1?t7:'';save();toast(it.due?`Due ${it.due===t0?'today':it.due===t1?'tomorrow':'in a week'}`:'No due date');return render()}
   if(el=c('[data-tdel]')){const it=S.todos.items.find(i=>i.id===el.dataset.tdel);if(it){if(it.done&&it.doneAt)it.list='_deleted';else S.todos.items=S.todos.items.filter(i=>i!==it)}save();return render()}
-  if(el=c('[data-tl]')){TL=el.dataset.tl;return renderTodos()}
+  if(el=c('[data-tl]')){TL=el.dataset.tl;if(TLFORM!=='new')TLFORM=null;return renderTodos()}
+  if(el=c('[data-ltpl]')){const [n,e,kd]=el.dataset.ltpl.split('|'),f=$('#fTList');f.name.value=n;f.icon.value=e;f.querySelector(`[name=kind][value=${kd}]`).checked=true;return}
   if(el=c('[data-pv]')){PV=el.dataset.pv;POFF=0;return renderProgress()}
   if(el=c('[data-poff]')){POFF=Math.min(0,POFF+(+el.dataset.poff));return renderProgress()}
   if(el=c('[data-gotoday]')){viewDate=parse(el.dataset.gotoday);return show('today')}
@@ -1018,15 +1024,18 @@ document.addEventListener('click',async e=>{
     case 'mImport':IMPORT=IMPORT?null:{text:'',parsed:null};MADD=false;return renderMoney();
     case 'mImportClose':IMPORT=null;return renderMoney();
     case 'mAdd':MADD=!MADD;IMPORT=null;return renderMoney();
-    case 'smsClip':try{const t=await navigator.clipboard.readText();if(!t)return toast('Clipboard is empty');doParse(t)}catch(err){toast('Paste into the box instead (long-press → Paste)')}return;
+    case 'smsClip':try{const t=await navigator.clipboard.readText();if(!t)return toast('Clipboard is empty');const prev=($('#smsText')?.value||'').trim();doParse(prev&&!prev.includes(t.trim())?prev+'\n\n'+t:t)}catch(err){toast('Paste into the box instead (long-press → Paste)')}return;
     case 'smsParse':return doParse($('#smsText').value);
+    case 'smsAll':case 'smsNone':IMPORT.parsed.forEach(p=>{if(!p.dup)p.skip=el.dataset.act==='smsNone'});return renderMoney();
     case 'smsCopyLink':try{await navigator.clipboard.writeText(smsLink());toast('Link copied ✓')}catch(err){toast('Long-press the link to copy it')}return;
     case 'smsSave':{let n=0;IMPORT.parsed.forEach(p=>{if(!p.dup&&!p.skip){addTx(p,'sms');n++}});IMPORT=null;save();renderMoney();return toast(`Imported ${n} transaction${n===1?'':'s'} ✓`)}
     case 'tLogShop':{const L=tlist(TL),done=S.todos.items.filter(i=>i.list===TL&&i.done),est=done.reduce((a,i)=>a+(+i.price||0)*(parseFloat(i.qty)||1),0);
       const v=parseFloat(prompt(`How much did you spend? (${S.money.cur})`,est?String(Math.round(est*100)/100):''));if(!(v>0))return;
-      addTx({date:todayK(),amount:v,type:'expense',cat:'groceries',merchant:L.name,raw:'groceries:'+Date.now()},'groceries');done.forEach(i=>i.list='_cleared');save();renderTodos();return toast(`Logged ${fmtMoney(v)} in Money 🛒`)}
-    case 'tlAdd':{const n=prompt('Name of the new list (e.g. Pharmacy, Weekend, Project X):');if(!n||!n.trim())return;const ic=(prompt('Pick an emoji for it:','📝')||'📝').trim().slice(0,4);const l={id:uid(),name:n.trim().slice(0,30),icon:ic,kind:/grocer|shop|market|سوبر/i.test(n)?'groceries':'custom'};S.todos.lists.push(l);TL=l.id;save();return renderTodos()}
-    case 'tlEdit':{const l=tlist(TL);const n=prompt('Rename list:',l.name);if(n&&n.trim()){l.name=n.trim().slice(0,30);const ic=prompt('Emoji:',l.icon);if(ic)l.icon=ic.trim().slice(0,4);save();renderTodos()}return}
+      addTx({date:todayK(),amount:v,type:'expense',cat:/shop|clothes|ملابس/i.test(L.name)&&!/grocer|بقال/i.test(L.name)?'shopping':'groceries',merchant:L.name,raw:'groceries:'+Date.now()},'groceries');if(L.kind!=='monthly')done.forEach(i=>i.list='_cleared');else L.logged=todayK().slice(0,7);save();renderTodos();return toast(`Logged ${fmtMoney(v)} in Money 🛒`)}
+    case 'tlAdd':TLFORM=TLFORM==='new'?null:'new';renderTodos();return setTimeout(()=>$('#fTList')?.scrollIntoView({behavior:'smooth',block:'center'}),30);
+    case 'tlEdit':TLFORM=TLFORM===TL?null:TL;renderTodos();return setTimeout(()=>$('#fTList')?.scrollIntoView({behavior:'smooth',block:'center'}),30);
+    case 'tlCancel':TLFORM=null;return renderTodos();
+    case 'tlReset':{const l=tlist(TL);if(!l||!confirm('Untick everything and start the list again?'))return;S.todos.items.filter(i=>i.list===l.id&&i.done).forEach(i=>{S.todos.items.push({...i,id:uid(),list:'_cleared'});i.done=false;i.doneAt=''});save();return renderTodos()}
     case 'tlDel':{const l=tlist(TL);if(confirm(`Delete “${l.name}” and its items?`)){S.todos.lists=S.todos.lists.filter(x=>x!==l);S.todos.items=S.todos.items.filter(i=>i.list!==l.id||(i.done&&i.doneAt));S.todos.items.forEach(i=>{if(i.list===l.id)i.list='_deleted'});TL='today';save();renderTodos()}return}
     case 'tClear':S.todos.items.forEach(i=>{if(i.list===TL&&i.done)i.list='_cleared'});save();return renderTodos();
     case 'tShare':{const l=tlist(TL),txt=`${l.icon} ${l.name}\n`+S.todos.items.filter(i=>i.list===l.id&&!i.done).map(i=>`• ${i.text}${i.qty?' ×'+i.qty:''}`).join('\n');
@@ -1103,7 +1112,11 @@ document.addEventListener('change',e=>{
   if(t.dataset&&t.dataset.impcat){IMPORT.parsed[+t.dataset.impcat].cat=t.value;return}
   if(t.dataset&&t.dataset.imp){IMPORT.parsed[+t.dataset.imp].skip=!t.checked;return}
   if(t.id==='heroImg'&&HD){const f=t.files[0];if(!f)return;const img=new Image(),u=URL.createObjectURL(f);img.onload=()=>{const c=document.createElement('canvas'),sw0=img.width,sh0=Math.min(img.height,img.width*1.6),W=Math.min(720,sw0),Hh=Math.round(sh0*W/sw0);c.width=W;c.height=Hh;c.getContext('2d').drawImage(img,0,0,sw0,sh0,0,0,W,Hh);let q=.86,d=c.toDataURL('image/jpeg',q);while(d.length>880000&&q>.4){q-=.1;d=c.toDataURL('image/jpeg',q)}HD.img=d;HD.useImg=true;URL.revokeObjectURL(u);renderHero()};img.onerror=()=>toast('Could not read that image');img.src=u;return}
-  if(t.id==='smsFile'){const f=t.files[0];if(f)f.text().then(doParse);return}
+  if(t.id==='smsFile'){const fs=[...t.files];if(!fs.length)return;toast('Reading messages…');
+    Promise.all(fs.map(f=>f.text().then(x=>[f.name,x]))).then(arr=>{let recs=[],plain=[];arr.forEach(([n,x])=>{const r=smsRecords(n,x);if(r)recs=recs.concat(r);else plain.push(x)});
+      if(!recs.length)return doParse(plain.join('\n\n'));doParse('',parseRecords(recs).concat(plain.length?parseMany(plain.join('\n\n')):[]),recs.length)}).catch(()=>toast('Could not read that file'));t.value='';return}
+  if(t.dataset&&t.dataset.impdate){const p=IMPORT.parsed[+t.dataset.impdate];if(t.value){p.date=t.value;p.nodate=false}return}
+  if(t.dataset&&t.dataset.impfrom!=null){const f=t.dataset.impfrom;IMPORT.parsed.forEach(p=>{if(!p.dup&&(p.from||'')===f)p.skip=!t.checked});return renderMoney()}
   if(t.id==='tutorAI'){S.lang.ai=t.value;return save()}
   if(t.id==='mFreq'){$('#mWeekly').classList.toggle('hidden',t.value!=='weekly');$('#mEvery').classList.toggle('hidden',t.value!=='interval');return}
   if(t.dataset&&t.dataset.tday!=null){const i=+t.dataset.tday,d=T_().days;if(t.checked&&!d.includes(i))d.push(i);if(!t.checked)T_().days=d.filter(x=>x!==i);syncTrainRoutine();const pv=$('#tPrev');if(pv)pv.innerHTML=tPrevHTML();return save()}
@@ -2126,7 +2139,16 @@ function statusHTML(){
 /* ---------- To-do lists ---------- */
 const XP_TODO=5;
 function defaultTodos(){return {lists:[{id:uid(),name:'Groceries',icon:'🛒',kind:'groceries'},{id:uid(),name:'Work',icon:'💼',kind:'work'},{id:uid(),name:'Home',icon:'🏠',kind:'home'}],items:[]}}
-let TL='today';
+let TL='today',TLFORM=null;   // TLFORM: null, 'new' or a list id being edited
+const LKINDS={custom:['📝','To-do','Tasks with due dates and stars'],groceries:['🛒','Shopping','Grouped by aisle, with prices; clear it after shopping'],monthly:['🗓️','Monthly','Same items every month; ticks reset on the 1st'],bucket:['🌟','Bucket list','Dreams and goals with no deadline']};
+const LTEMPL=[['Monthly groceries','🛒','monthly'],['Monthly shopping','🛍️','monthly'],['Bucket list','🌍','bucket'],['Wish list','🎁','bucket'],['Shopping','🧺','groceries']];
+const lkind=l=>l&&LKINDS[l.kind]?l.kind:'custom';
+const isShopKind=l=>['groceries','monthly'].includes(lkind(l));
+// Monthly lists: on a new month, everything ticked last month is open again. The ticked copies are kept (hidden) so your history and XP stay.
+function monthlyReset(){const mk=todayK().slice(0,7);let ch=false;
+  S.todos.lists.forEach(l=>{if(l.kind!=='monthly')return;if(!l.month){l.month=mk;ch=true;return}if(l.month===mk)return;
+    S.todos.items.filter(i=>i.list===l.id&&i.done).forEach(i=>{S.todos.items.push({...i,id:uid(),list:'_cleared'});i.done=false;i.doneAt=''});l.month=mk;ch=true});
+  if(ch)save()}
 const tlist=id=>S.todos.lists.find(l=>l.id===id);
 const openTodos=()=>S.todos.items.filter(i=>!i.done&&tlist(i.list));
 const dueToday=()=>{const k=todayK();return openTodos().filter(i=>i.star||(i.due&&i.due<=k))};
@@ -2141,32 +2163,43 @@ function parseTodo(text){
 }
 function addTodo(listId,text,due){const p=parseTodo(text);if(!p.text||!tlist(listId))return null;const it={id:uid(),list:listId,text:p.text,qty:p.qty,price:p.price,star:p.star,due:due||p.due,done:false,doneAt:'',created:todayK()};S.todos.items.push(it);return it}
 const dueLabel=d=>{if(!d)return '';const n=dayDiff(new Date(),parse(d));return n<0?`<span class="due late">overdue</span>`:n===0?'<span class="due">today</span>':n===1?'<span class="due">tomorrow</span>':`<span class="due">${parse(d).toLocaleDateString(undefined,{day:'numeric',month:'short'})}</span>`};
-function todoRow(i,showList){const l=tlist(i.list);
-  return `<div class="todo ${i.done?'done':''}"><button class="tchk" data-todo="${i.id}" aria-label="Done">✓</button><div class="grow"><div class="tt">${esc(i.text)}${i.qty?` <span class="qty">×${esc(i.qty)}</span>`:''}${i.price?` <span class="meta">${esc(S.money.cur)} ${esc(i.price)}</span>`:''}</div>${(showList&&l)||i.due?`<div class="meta">${showList&&l?esc(l.icon+' '+l.name)+' ':''}${dueLabel(i.done?'':i.due)}</div>`:''}</div>
-    ${i.done?'':`<button class="tb2 ${i.star?'on':''}" data-tstar="${i.id}" aria-label="Important">★</button><button class="tb2" data-tdue="${i.id}" aria-label="Due date">📅</button>`}<button class="tb2" data-tdel="${i.id}" aria-label="Delete">×</button></div>`}
+function todoRow(i,showList){const l=tlist(i.list),k=lkind(l),dated=k==='custom';
+  return `<div class="todo ${i.done?'done':''}"><button class="tchk" data-todo="${i.id}" aria-label="Done">✓</button><div class="grow"><div class="tt">${esc(i.text)}${i.qty?` <span class="qty">×${esc(i.qty)}</span>`:''}${i.price?` <span class="meta">${esc(S.money.cur)} ${esc(i.price)}</span>`:''}</div>${(showList&&l)||i.due||(k==='bucket'&&i.done&&i.doneAt)?`<div class="meta">${showList&&l?esc(l.icon+' '+l.name)+' ':''}${dueLabel(i.done?'':i.due)}${k==='bucket'&&i.done&&i.doneAt?'✨ achieved '+parse(i.doneAt).toLocaleDateString(undefined,{day:'numeric',month:'short',year:'numeric'}):''}</div>`:''}</div>
+    ${i.done?'':`<button class="tb2 ${i.star?'on':''}" data-tstar="${i.id}" aria-label="Important">★</button>${dated||i.due?`<button class="tb2" data-tdue="${i.id}" aria-label="Due date">📅</button>`:''}`}<button class="tb2" data-tdel="${i.id}" aria-label="Delete">×</button></div>`}
 function todoTodayCard(){
-  const due=dueToday(),rest=openTodos().filter(i=>!due.includes(i)),items=due.concat(rest),open=items.length;
+  monthlyReset();const due=dueToday(),rest=openTodos().filter(i=>!due.includes(i)&&!['monthly','bucket'].includes(lkind(tlist(i.list)))),items=due.concat(rest),open=items.length;
   if(!S.todos.lists.length)return '';
   return `<div class="card"><div class="sec-h"><span>📋 To-dos</span><button class="pill" data-act="goTodos">${open} open ›</button></div>
     ${items.slice(0,10).map(i=>todoRow(i,true)).join('')||'<div class="meta" style="padding:4px 0 8px">All clear! Add a to-do:</div>'}${open>10?`<button class="linkbtn" data-act="goTodos">+ ${open-10} more ›</button>`:''}
     <form id="fTodoQ" class="row mt"><input name="t" placeholder="Add a to-do…" autocomplete="off"><select name="l" style="flex:0 0 34%">${S.todos.lists.map(l=>`<option value="${l.id}">${esc(l.icon)} ${esc(l.name)}</option>`).join('')}</select><button class="btn" style="flex:0 0 auto;padding:10px 14px">+</button></form></div>`;
 }
+function tListForm(){const l=TLFORM==='new'?null:tlist(TLFORM),k=l?lkind(l):'custom';
+  return `<form class="card" id="fTList"><h2>${l?'✎ Edit list':'＋ New list'}</h2>${l?'':`<div class="chips" style="margin-bottom:10px">${LTEMPL.map(([n,e,kd])=>`<button type="button" class="pill" data-ltpl="${esc(n)}|${e}|${kd}">${e} ${esc(n)}</button>`).join('')}</div>`}
+    <div class="row"><input name="icon" value="${esc(l?l.icon:'📝')}" maxlength="4" style="flex:0 0 56px;text-align:center" aria-label="Emoji"><input name="name" value="${esc(l?l.name:'')}" placeholder="List name, e.g. Pharmacy" maxlength="30" autocomplete="off" required></div>
+    <div class="mt">${Object.entries(LKINDS).map(([kd,[e,n,d]])=>`<label class="kindopt"><input type="radio" name="kind" value="${kd}" ${kd===k?'checked':''}><span><b>${e} ${n}</b><small class="meta">${d}</small></span></label>`).join('')}</div>
+    <div class="row mt"><button class="btn">${l?'Save':'Create list'}</button><button type="button" class="btn ghost" style="flex:0 0 auto" data-act="tlCancel">Cancel</button></div></form>`}
 function renderTodos(){
+  monthlyReset();
   if(TL!=='today'&&!tlist(TL))TL='today';
-  const L=TL==='today'?null:tlist(TL),k=todayK();
+  const L=TL==='today'?null:tlist(TL),k=todayK(),K=lkind(L);
   let h=`<div class="tabsx"><button class="${TL==='today'?'on':''}" data-tl="today">⭐ Today <b>${dueToday().length}</b></button>${S.todos.lists.map(l=>`<button class="${TL===l.id?'on':''}" data-tl="${l.id}">${esc(l.icon)} ${esc(l.name)} <b>${S.todos.items.filter(i=>i.list===l.id&&!i.done).length}</b></button>`).join('')}<button data-act="tlAdd">＋ List</button></div>`;
-  const ph=L?(L.kind==='groceries'?'Add item… e.g. milk x2 @45':'Add a task… use ! for important, “tomorrow” for due'):'Add a task for today…';
+  if(TLFORM==='new')h+=tListForm();
+  const ph=!L?'Add a task for today…':isShopKind(L)?'Add item… e.g. milk x2 @45':K==='bucket'?'Add a dream… e.g. See the Northern Lights':'Add a task… use ! for important, “tomorrow” for due';
   h+=`<form id="fTodo" class="card row"><input name="t" placeholder="${ph}" autocomplete="off" enterkeyhint="done">${L?'':`<select name="l" style="flex:0 0 34%">${S.todos.lists.map(l=>`<option value="${l.id}">${esc(l.icon)} ${esc(l.name)}</option>`).join('')}</select>`}<button class="btn" style="flex:0 0 auto">Add</button></form>`;
   const items=L?S.todos.items.filter(i=>i.list===L.id):S.todos.items.filter(i=>tlist(i.list)&&(i.done?i.doneAt===k&&(i.star||i.due):(i.star||(i.due&&i.due<=k))));
   const open=items.filter(i=>!i.done).sort((a,b)=>(b.star-a.star)||((a.due||'9')>(b.due||'9')?1:-1)),done=items.filter(i=>i.done);
-  const groc=L&&L.kind==='groceries';
-  if(groc&&open.length){const g={};open.forEach(i=>(g[aisleOf(i.text)]=g[aisleOf(i.text)]||[]).push(i));
-    const est=items.reduce((a,i)=>a+(+i.price||0)*(parseFloat(i.qty)||1),0);
-    h+=`<div class="card">${Object.entries(g).map(([a,arr])=>`<div class="aisle">${a}</div>`+arr.map(i=>todoRow(i,false)).join('')).join('')}${est?`<div class="meta mt">Estimated total: <b>${fmtMoney(est)}</b></div>`:''}</div>`;
-  }else h+=`<div class="card">${open.length?open.map(i=>todoRow(i,!L)).join(''):`<div class="empty">${L?(L.kind==='groceries'?'Your shopping list is empty 🛒':'All clear! 🎉'):'Nothing due today. Star ★ tasks in any list to see them here.'}</div>`}</div>`;
-  if(groc&&done.length)h+=`<button class="btn full" style="margin-bottom:12px" data-act="tLogShop">🧾 Done shopping: log it in Money</button>`;
-  if(done.length)h+=`<div class="card"><details ${L&&L.kind==='groceries'?'open':''}><summary style="margin:0">✓ Done (${done.length})</summary><div class="mt">${done.map(i=>todoRow(i,!L)).join('')}</div></details>${L?`<button class="linkbtn" data-act="tClear">Clear done items</button>`:''}</div>`;
-  if(L)h+=`<div class="row" style="margin-bottom:12px"><button class="btn ghost" data-act="tShare">📤 Share list</button><button class="btn ghost" data-act="tlEdit">✎ Rename</button><button class="btn danger" style="flex:0 0 auto" data-act="tlDel">Delete</button></div>`;
+  const shop=isShopKind(L),cost=a=>a.reduce((s,i)=>s+(+i.price||0)*(parseFloat(i.qty)||1),0);
+  if(K==='monthly'&&items.length){const mon=new Date().toLocaleDateString(undefined,{month:'long'}),all=cost(items),got=cost(done);
+    h+=`<div class="card"><div class="sec-h" style="margin:0"><span>🗓️ ${esc(mon)}: ${done.length} of ${items.length} got</span>${all?`<b>${fmtMoney(all)}</b>`:''}</div><div class="bar mt"><i style="width:${Math.round(done.length/items.length*100)}%"></i></div><div class="meta mt">${all?`${fmtMoney(got)} bought · ${fmtMoney(all-got)} to go. `:''}Ticks reset on the 1st of every month; your items stay.</div></div>`}
+  if(K==='bucket'&&items.length)h+=`<div class="card"><div class="sec-h" style="margin:0"><span>🌟 ${done.length} of ${items.length} achieved</span></div><div class="bar mt"><i style="width:${Math.round(done.length/items.length*100)}%"></i></div></div>`;
+  if(shop&&open.length){const g={};open.forEach(i=>(g[aisleOf(i.text)]=g[aisleOf(i.text)]||[]).push(i));
+    const est=cost(open);
+    h+=`<div class="card">${Object.entries(g).map(([a,arr])=>`<div class="aisle">${a}</div>`+arr.map(i=>todoRow(i,false)).join('')).join('')}${est?`<div class="meta mt">${K==='monthly'?'Still to buy':'Estimated total'}: <b>${fmtMoney(est)}</b></div>`:''}</div>`;
+  }else h+=`<div class="card">${open.length?open.map(i=>todoRow(i,!L)).join(''):`<div class="empty">${!L?'Nothing due today. Star ★ tasks in any list to see them here.':K==='monthly'?(items.length?'All bought for this month 🎉':'Add the things you buy every month. Tick them off as you buy them; they come back on the 1st 🗓️'):shop?'Your shopping list is empty 🛒':K==='bucket'?(items.length?'Every dream achieved! Time to dream bigger 🌟':'What do you want to do or have one day? Add it here 🌍'):'All clear! 🎉'}</div>`}</div>`;
+  if(shop&&done.length&&!(K==='monthly'&&L.logged===k.slice(0,7)))h+=`<button class="btn full" style="margin-bottom:12px" data-act="tLogShop">🧾 Done shopping: log it in Money</button>`;
+  if(done.length)h+=`<div class="card"><details ${shop||K==='bucket'?'open':''}><summary style="margin:0">${K==='bucket'?'✨ Achieved':K==='monthly'?'✓ Got this month':'✓ Done'} (${done.length})</summary><div class="mt">${done.map(i=>todoRow(i,!L)).join('')}</div></details>${!L?'':K==='monthly'?`<button class="linkbtn" data-act="tlReset">↺ Start the list again now</button>`:K==='bucket'?'':`<button class="linkbtn" data-act="tClear">Clear done items</button>`}</div>`;
+  if(L&&TLFORM===L.id)h+=tListForm();
+  if(L)h+=`<div class="row" style="margin-bottom:12px"><button class="btn ghost" data-act="tShare">📤 Share list</button><button class="btn ghost" data-act="tlEdit">✎ Edit list</button><button class="btn danger" style="flex:0 0 auto" data-act="tlDel">Delete</button></div>`;
   h+=`<p class="meta">+${XP_TODO} XP for every to-do you finish. Tip: type “eggs x12”, “milk @45” (price), “call bank tomorrow” or “pay bills !”.</p>`;
   $('#todosBody').innerHTML=h;
 }
@@ -2218,13 +2251,13 @@ function parseSMS(raw){
     ||t.match(/(?:لدى|لدي|عند|إلى|الى|لصالح|من)\s+([^\d.,،:]{2,30}?)(?=\s+(?:بتاريخ|يوم|في|بطاقة|رصيد|المتاح|الساعة|من|عن)|[.,،]|$)/);
   if(mm)merchant=mm[1].replace(/\*+/g,' ').replace(/\s+/g,' ').trim();
   if(/^(your|you|the|card|account|حسابك|بطاقتك)(\s|$)/i.test(merchant))merchant='';
-  let date=todayK();
+  let date='';
   const iso=t.match(/\b(20\d{2})-(\d{1,2})-(\d{1,2})\b/),dm=t.match(/\b(\d{1,2})[\/\-.](\d{1,2})[\/\-.](\d{2,4})\b/);
   if(iso)date=`${iso[1]}-${pad(+iso[2])}-${pad(+iso[3])}`;
   else if(dm){let[,d,mo,y]=dm;y=y.length===2?'20'+y:y;if(+mo>=1&&+mo<=12&&+d>=1&&+d<=31)date=`${y}-${pad(+mo)}-${pad(+d)}`}
-  if(date>todayK()||date<'2000')date=todayK();
+  const nodate=!date||date>todayK()||date<'2000';if(nodate)date=todayK();
   const card=(t.match(/(?:ending(?: with| in)?|card(?: no\.?)?\s*\**|\*{2,}|x{2,}|منتهي(?:ة)?\s*(?:ب|برقم|بـ)?)\s*(\d{4})/i)||[])[1]||'';
-  return {amount:amt,cur,type,merchant,date,card,raw:String(raw).trim().slice(0,400),cat:type==='income'?'income':guessCat(merchant,t)};
+  return {amount:amt,cur,type,merchant,date,nodate,card,raw:String(raw).trim().slice(0,400),cat:type==='income'?'income':guessCat(merchant,t)};
 }
 function parseMany(text){
   const out=[],seen=new Set();
@@ -2234,6 +2267,34 @@ function parseMany(text){
     ch.split(/\r?\n/).forEach(l=>{const q=parseSMS(l);if(q)out.push(q)})});
   return out.filter(p=>{const h=txHash(p);if(seen.has(h))return false;seen.add(h);return true});
 }
+/* Old messages come from backup files: Android "SMS Backup & Restore" (.xml) or an iPhone export made on a computer (.csv / .txt). */
+function parseCSV(text){const rows=[];let row=[],f='',q=false;text=String(text).replace(/^﻿/,'');
+  for(let i=0;i<text.length;i++){const ch=text[i];
+    if(q){if(ch==='"'){if(text[i+1]==='"'){f+='"';i++}else q=false}else f+=ch}
+    else if(ch==='"')q=true;else if(ch===','){row.push(f);f=''}
+    else if(ch==='\n'||ch==='\r'){if(ch==='\r'&&text[i+1]==='\n')i++;row.push(f);rows.push(row);row=[];f=''}else f+=ch}
+  if(f||row.length){row.push(f);rows.push(row)}return rows.filter(r=>r.some(x=>x.trim()))}
+function anyDateKey(v){if(v==null||v==='')return '';v=String(v).trim();
+  if(/^\d{12,13}$/.test(v))return key(new Date(+v));if(/^\d{9,10}$/.test(v))return key(new Date(+v*1000));
+  let m=v.match(/(20\d{2})[-\/.](\d{1,2})[-\/.](\d{1,2})/);if(m)return `${m[1]}-${pad(+m[2])}-${pad(+m[3])}`;
+  m=v.match(/\b(\d{1,2})[\/\-.](\d{1,2})[\/\-.](\d{2,4})\b/);if(m){let[,d,mo,y]=m;y=y.length===2?'20'+y:y;if(+d<=12&&+mo>12)[d,mo]=[mo,d];if(+mo>=1&&+mo<=12&&+d>=1&&+d<=31)return `${y}-${pad(+mo)}-${pad(+d)}`}
+  const t=Date.parse(v.replace(/\s+at\s+/i,' '));return isNaN(t)?'':key(new Date(t))}
+function smsRecords(name,text){const head=String(text).slice(0,600);
+  if(/\.xml$/i.test(name)||/<smses|<sms\s/i.test(head)){
+    const doc=new DOMParser().parseFromString(text,'text/xml');
+    return [...doc.querySelectorAll('sms')].filter(e=>e.getAttribute('type')!=='2').map(e=>{const cn=e.getAttribute('contact_name');
+      return {body:e.getAttribute('body')||'',date:anyDateKey(e.getAttribute('date')),from:cn&&cn!=='(Unknown)'?cn:(e.getAttribute('address')||'')}})}
+  if(/\.csv$/i.test(name)){const rows=parseCSV(text);if(rows.length<2)return [];
+    const H=rows[0].map(x=>x.trim().toLowerCase()),col=re=>H.findIndex(h=>re.test(h));
+    const bi=col(/^(text|body|message|message text|content|sms)$/)>=0?col(/^(text|body|message|message text|content|sms)$/):col(/text|body|message|content/),
+      di=col(/date|time|sent|received/),fi=col(/sender|from|address|contact|chat|number/),ti=col(/^type$|direction/);
+    if(bi<0)return rows.map(r=>({body:r.join(' '),date:'',from:''}));
+    return rows.slice(1).filter(r=>ti<0||!/outgoing|sent/i.test(r[ti]||'')).map(r=>({body:r[bi]||'',date:di>=0?anyDateKey(r[di]):'',from:fi>=0?(r[fi]||'').trim():''}))}
+  return null}
+function parseRecords(recs){const out=[],seen=new Set();
+  recs.forEach(r=>{const p=parseSMS(r.body);if(!p)return;if(p.nodate&&r.date&&r.date<=todayK()){p.date=r.date;p.nodate=false}if(r.from)p.from=r.from.slice(0,40);
+    const h=txHash(p);if(seen.has(h))return;seen.add(h);out.push(p)});
+  return out.sort((a,b)=>b.date.localeCompare(a.date))}
 const txHash=p=>`${p.date}|${p.amount}|${p.type}|${merchKey(p.merchant)}|${(p.raw||'').slice(0,50)}`;
 const fmtMoney=(n,cur)=>`${(cur||S.money.cur)} ${(+n).toLocaleString(undefined,{maximumFractionDigits:2})}`;
 const monthTx=mk=>S.money.tx.filter(x=>x.date.slice(0,7)===mk);
@@ -2277,17 +2338,27 @@ const catOpts=sel=>Object.entries(MCATS).map(([k,[e,n]])=>`<option value="${k}" 
 function importHTML(){
   const P=IMPORT.parsed;
   let h=`<div class="card"><h2>📩 Import bank messages</h2><textarea id="smsText" rows="5" placeholder="Paste one or many bank SMS here (English or Arabic)…">${esc(IMPORT.text||'')}</textarea>
-    <div class="row mt"><button class="btn ghost" data-act="smsClip">📋 Paste from clipboard</button><label class="btn ghost">📂 Open file<input type="file" id="smsFile" accept=".txt,text/plain" hidden></label></div>
+    <div class="row mt"><button class="btn ghost" data-act="smsClip">📋 Paste from clipboard</button><label class="btn ghost">📂 Open file<input type="file" id="smsFile" accept=".txt,.csv,.xml,text/plain,text/csv,text/xml,application/xml" multiple hidden></label></div>
+    <details class="mt"><summary>📜 Import old messages (from before the automation)</summary><ol class="meta">
+      <li><b>Android:</b> no web app can open your SMS inbox, so back it up first. Install <b>SMS Backup &amp; Restore</b> (free) → <b>Back up</b> → messages only → save to your phone. Then tap <b>Open file</b> above and pick the <code>.xml</code>. Each message keeps its real date.</li>
+      <li><b>iPhone + Mac:</b> turn on <b>Messages in iCloud</b> on both. On the Mac open Messages → your bank’s chat → click a message → <b>⌘A</b>, <b>⌘C</b>. Paste it here (it reaches your iPhone through Universal Clipboard, or open Kuestro in the Mac’s browser).</li>
+      <li><b>iPhone + any computer:</b> Apple doesn’t let any app read Messages, so export them with a computer tool such as <b>iMazing</b>: Messages → your bank → <b>Export to CSV</b>. Open that <code>.csv</code> here; dates come from the file.</li>
+      <li><b>iPhone only, a few messages:</b> long-press a message → <b>Copy</b> → <b>Paste from clipboard</b>. Repeat: each paste adds to the box.</li>
+      <li>Check the dates before importing. A message that doesn’t say its own date is marked 📅 so you can set it. Anything already in Money is skipped, so importing twice is safe.</li></ol></details>
     <button class="btn full mt" data-act="smsParse">Read messages</button>`;
-  if(P){const ok=P.filter(p=>!p.dup);
-    h+=`<div class="mt">${P.length?P.map((p,i)=>`<div class="txrow ${p.dup?'dup':''}"><input type="checkbox" data-imp="${i}" ${p.skip||p.dup?'':'checked'} ${p.dup?'disabled':''}><div class="grow"><div><b class="${p.type==='income'?'pos':''}">${p.type==='income'?'+':'−'}${fmtMoney(p.amount,p.cur||S.money.cur)}</b> · ${esc(p.merchant||'—')}</div><div class="meta">${esc(p.date)}${p.card?' · card ••'+esc(p.card):''}${p.dup?' · already imported':''}</div><select class="txcat" data-impcat="${i}">${catOpts(p.cat)}</select></div></div>`).join(''):'<div class="meta">No transactions found. Make sure the text includes an amount with a currency (EGP, LE, جنيه…).</div>'}</div>
+  if(P){const ok=P.filter(p=>!p.dup),undated=ok.filter(p=>p.nodate).length,froms={};ok.forEach(p=>{const f=p.from||'';froms[f]=froms[f]||{n:0,on:0};froms[f].n++;if(!p.skip)froms[f].on++});
+    const ds=ok.map(p=>p.date).sort(),fk=Object.keys(froms);
+    if(P.length)h+=`<div class="card mt" style="margin-bottom:0"><b>${P.length} transaction${P.length===1?'':'s'} found</b>${IMPORT.nMsgs?` in ${IMPORT.nMsgs.toLocaleString()} messages`:''}<div class="meta">${ok.length?`${ds[0]===ds[ds.length-1]?ds[0]:ds[0]+' → '+ds[ds.length-1]}`:''}${P.length-ok.length?` · ${P.length-ok.length} already imported`:''}${undated?` · <b>📅 ${undated} without a date in the message: set them below</b>`:''}</div>
+      ${fk.length>1||fk[0]?`<div class="chips mt">${fk.sort((a,b)=>froms[b].n-froms[a].n).map(f=>`<label><input type="checkbox" data-impfrom="${esc(f)}" ${froms[f].on?'checked':''}><span>${esc(f||'Unknown sender')} (${froms[f].n})</span></label>`).join('')}</div>`:''}
+      <div class="row mt"><button class="pill" style="flex:0 0 auto" data-act="smsAll">Select all</button><button class="pill" style="flex:0 0 auto" data-act="smsNone">Select none</button></div></div>`;
+    h+=`<div class="mt">${P.length?P.map((p,i)=>`<div class="txrow ${p.dup?'dup':''}"><input type="checkbox" data-imp="${i}" ${p.skip||p.dup?'':'checked'} ${p.dup?'disabled':''}><div class="grow"><div><b class="${p.type==='income'?'pos':''}">${p.type==='income'?'+':'−'}${fmtMoney(p.amount,p.cur||S.money.cur)}</b> · ${esc(p.merchant||'—')}</div><div class="meta">${p.dup?esc(p.date):`<input type="date" class="impdate${p.nodate?' warn':''}" data-impdate="${i}" value="${esc(p.date)}" max="${todayK()}">${p.nodate?' 📅':''}`}${p.from?' · '+esc(p.from):''}${p.card?' · card ••'+esc(p.card):''}${p.dup?' · already imported':''}</div><select class="txcat" data-impcat="${i}">${catOpts(p.cat)}</select></div></div>`).join(''):'<div class="meta">No transactions found. Make sure the text includes an amount with a currency (EGP, LE, جنيه…).</div>'}</div>
       ${ok.length?`<button class="btn full mt" data-act="smsSave">Import ${ok.filter(p=>!p.skip).length} transaction${ok.length===1?'':'s'}</button>`:''}`;
   }
   return h+`<button class="linkbtn" data-act="mImportClose">Close</button></div>`;
 }
-function doParse(text){
+function doParse(text,parsed,nMsgs){
   const hs=new Set(S.money.tx.map(x=>x.h));
-  IMPORT={text,parsed:parseMany(text).map(p=>({...p,dup:hs.has(txHash(p))}))};
+  IMPORT={text:text||'',nMsgs:nMsgs||0,parsed:(parsed||parseMany(text)).map(p=>({...p,dup:hs.has(txHash(p))}))};
   renderMoney();
 }
 const normCur=c=>{c=String(c||'').toUpperCase();if(/^\$|US/.test(c))return 'USD';if(c==='€')return 'EUR';if(c==='£')return 'GBP';return /^(USD|EUR|SAR|AED|GBP)$/.test(c)?c:''};
