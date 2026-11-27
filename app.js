@@ -2492,7 +2492,8 @@ const DAILY=[
   {id:'srs',lang:1,icon:'🧠',t:'Clear all your due flashcards',xp:30,ok:()=>S.lang.deck.length>0&&(dueCards().length>0||(S.lang.reviews[todayK()]||0)>0),p:d=>{const r=S.lang.reviews[key(d)]||0;return [r,r+dueCards().length]}},
   {id:'words5',lang:1,icon:'✍️',t:'Add 5 new words to your deck',xp:25,ok:langOn,p:d=>[Math.min(5,S.lang.deck.filter(c=>c.added===key(d)).length),5]},
   {id:'langmin',lang:1,icon:'🗣️',t:'Hit your daily language goal',xp:30,ok:langOn,p:d=>[Math.min(S.lang.goal,langMinOn(key(d))),S.lang.goal]},
-  {id:'todo3',icon:'✅',t:'Clear 3 to-dos',xp:30,ok:()=>openTodos().length+todoDoneOn(todayK())>=3,p:d=>[Math.min(3,todoDoneOn(key(d))),3]},
+  {id:'todo3',icon:'✅',t:'Clear 3 to-dos',xp:30,ok:()=>{const k=todayK();return dueToday().length>0||S.todos.items.some(i=>i.done&&i.doneAt===k&&tlist(i.list)&&(i.star||(i.due&&i.due<=k)))},   // only when something is on today's list (due today, overdue or starred)
+  p:d=>[Math.min(3,todoDoneOn(key(d))),3]},
   {id:'deen',icon:'📿',t:'Complete your Prayer & Quran routines',xp:30,ok:d=>catDue(d,'prayer').length>0,p:d=>[catDone(d,'prayer'),catDue(d,'prayer').length]},
 ];
 const WEEKLY=[

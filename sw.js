@@ -1,5 +1,5 @@
 // Offline support: serves the app from cache, refreshes it in the background.
-const CACHE = 'kuestro-v31';
+const CACHE = 'kuestro-v32';
 const ASSETS = ['./', './index.html', './app.js', './theme.js', './foods.js', './manifest.webmanifest', './icon.svg', './icon-192.png', './icon-512.png'];
 
 self.addEventListener('install', e => {
